@@ -6,162 +6,46 @@ app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
 const defaultData = {
-  brands: [
-    { id: 1, name: 'Apple', logo: 'https://logo.clearbit.com/apple.com', description: '苹果公司' },
-    { id: 2, name: 'Sony', logo: 'https://logo.clearbit.com/sony.com', description: '索尼' },
-    { id: 3, name: 'Nintendo', logo: 'https://logo.clearbit.com/nintendo.com', description: '任天堂' },
-    { id: 4, name: 'Nike', logo: 'https://logo.clearbit.com/nike.com', description: '耐克' },
-    { id: 5, name: 'Starbucks', logo: 'https://logo.clearbit.com/starbucks.com', description: '星巴克' },
-    { id: 6, name: 'Dyson', logo: 'https://logo.clearbit.com/dyson.com', description: '戴森' },
-    { id: 7, name: 'SK-II', logo: 'https://logo.clearbit.com/sk-ii.com', description: 'SK-II' },
-    { id: 8, name: 'lululemon', logo: 'https://logo.clearbit.com/lululemon.com', description: '露露乐蒙' },
-    { id: 9, name: 'Tesla', logo: 'https://logo.clearbit.com/tesla.com', description: '特斯拉' },
-    { id: 10, name: 'Tesla', logo: 'https://logo.clearbit.com/tesla.com', description: '特斯拉' },
-    { id: 11, name: 'Tesla', logo: 'https://logo.clearbit.com/tesla.com', description: '特斯拉' },
-    { id: 12, name: 'Toyota', logo: 'https://logo.clearbit.com/toyota.com', description: '丰田' },
-    { id: 13, name: 'BMW', logo: 'https://logo.clearbit.com/bmw.com', description: '宝马' },
-    { id: 14, name: 'Mercedes', logo: 'https://logo.clearbit.com/mercedes-benz.com', description: '奔驰' },
-    { id: 15, name: 'Adidas', logo: 'https://logo.clearbit.com/adidas.com', description: '阿迪达斯' },
-    { id: 16, name: 'Puma', logo: 'https://logo.clearbit.com/puma.com', description: '彪马' },
-    { id: 17, name: 'Uniqlo', logo: 'https://logo.clearbit.com/uniqlo.com', description: '优衣库' },
-    { id: 18, name: 'Zara', logo: 'https://logo.clearbit.com/zara.com', description: 'Zara' },
-    { id: 19, name: 'IKEA', logo: 'https://logo.clearbit.com/ikea.com', description: '宜家' },
-    { id: 20, name: 'MUJI', logo: 'https://logo.clearbit.com/muji.com', description: '无印良品' }
-  ],
+  brands: [],
   users: [
-    { id: 1, username: 'demo', password: '123456', is_admin: true, avatar: '', bio: '', created_at: '2024-01-01T00:00:00.000Z' }
+    { id: 1, username: 'demo', password: '123456', is_admin: true, avatar: '', bio: '演示账号', created_at: '2024-01-01T00:00:00.000Z' }
   ],
   categories: [
     { id: 1, name: '数码', children: [
-      { id: 101, name: '手机', children: [
-        { id: 10101, name: '智能手机' },
-        { id: 10102, name: '老人机' }
-      ]},
-      { id: 102, name: '电脑', children: [
-        { id: 10201, name: '笔记本电脑' },
-        { id: 10202, name: '台式机' }
-      ]},
-      { id: 103, name: '耳机', children: [
-        { id: 10301, name: '蓝牙耳机' },
-        { id: 10302, name: '头戴式耳机' }
-      ]},
-      { id: 104, name: '平板', children: [
-        { id: 10401, name: 'iPad' },
-        { id: 10402, name: '安卓平板' }
-      ]},
-      { id: 105, name: '智能穿戴', children: [
-        { id: 10501, name: '智能手表' },
-        { id: 10502, name: '智能手环' }
-      ]}
+      { id: 101, name: '手机', children: [{ id: 10101, name: '智能手机' }, { id: 10102, name: '老人机' }] },
+      { id: 102, name: '电脑', children: [{ id: 10201, name: '笔记本电脑' }, { id: 10202, name: '台式机' }] },
+      { id: 103, name: '耳机', children: [{ id: 10301, name: '蓝牙耳机' }, { id: 10302, name: '头戴式耳机' }] }
     ]},
     { id: 2, name: '运动', children: [
-      { id: 201, name: '跑步', children: [
-        { id: 20101, name: '跑鞋' },
-        { id: 20102, name: '运动服' }
-      ]},
-      { id: 202, name: '瑜伽', children: [
-        { id: 20201, name: '瑜伽垫' },
-        { id: 20202, name: '瑜伽服' }
-      ]},
-      { id: 203, name: '健身', children: [
-        { id: 20301, name: '健身器材' },
-        { id: 20302, name: '蛋白粉' }
-      ]}
+      { id: 201, name: '跑步', children: [{ id: 20101, name: '跑鞋' }, { id: 20102, name: '运动服' }] },
+      { id: 202, name: '瑜伽', children: [{ id: 20201, name: '瑜伽垫' }, { id: 20202, name: '瑜伽服' }] }
     ]},
     { id: 3, name: '食品', children: [
-      { id: 301, name: '饮料', children: [
-        { id: 30101, name: '咖啡' },
-        { id: 30102, name: '茶' },
-        { id: 30103, name: '奶茶' }
-      ]},
-      { id: 302, name: '零食', children: [
-        { id: 30201, name: '坚果' },
-        { id: 30202, name: '饼干' }
-      ]}
+      { id: 301, name: '饮料', children: [{ id: 30101, name: '咖啡' }, { id: 30102, name: '茶' }] }
     ]},
     { id: 4, name: '服饰', children: [
-      { id: 401, name: 'T恤', children: [
-        { id: 40101, name: '纯棉T恤' },
-        { id: 40102, name: '运动T恤' }
-      ]},
-      { id: 402, name: '裤子', children: [
-        { id: 40201, name: '牛仔裤' },
-        { id: 40202, name: '运动裤' }
-      ]}
+      { id: 401, name: 'T恤', children: [{ id: 40101, name: '纯棉T恤' }] },
+      { id: 402, name: '裤子', children: [{ id: 40201, name: '牛仔裤' }] }
     ]},
     { id: 5, name: '图书', children: [
       { id: 501, name: '小说', children: [] },
-      { id: 502, name: '教育', children: [
-        { id: 50201, name: '英语' },
-        { id: 50202, name: '考试' }
-      ]}
+      { id: 502, name: '教育', children: [{ id: 50201, name: '英语' }] }
     ]},
     { id: 6, name: '游戏', children: [
-      { id: 601, name: '主机', children: [
-        { id: 60101, name: 'Switch' },
-        { id: 60102, name: 'PS5' },
-        { id: 60103, name: 'Xbox' }
-      ]},
-      { id: 602, name: '游戏软件', children: [] }
+      { id: 601, name: '主机', children: [{ id: 60101, name: 'Switch' }, { id: 60102, name: 'PS5' }] }
     ]},
     { id: 7, name: '美妆', children: [
-      { id: 701, name: '护肤品', children: [
-        { id: 70101, name: '面霜' },
-        { id: 70102, name: '精华' }
-      ]},
-      { id: 702, name: '彩妆', children: [] }
+      { id: 701, name: '护肤品', children: [{ id: 70101, name: '面霜' }] }
     ]},
     { id: 9, name: '家居', children: [
-      { id: 901, name: '家具', children: [
-        { id: 90101, name: '床' },
-        { id: 90102, name: '沙发' }
-      ]},
-      { id: 902, name: '小家电', children: [
-        { id: 90201, name: '香薰机' },
-        { id: 90202, name: '加湿器' }
-      ]}
+      { id: 901, name: '家具', children: [{ id: 90101, name: '床' }] },
+      { id: 902, name: '小家电', children: [{ id: 90201, name: '香薰机' }] }
     ]},
-    { id: 10, name: '汽车', children: [
-      { id: 1001, name: '电动车', children: [] },
-      { id: 1002, name: '燃油车', children: [] }
-    ]}
+    { id: 10, name: '汽车', children: [] }
   ],
-  products: [
-    { id: 1, name: 'iPhone 15 Pro', description: '钛金属设计，A17 Pro芯片，专业相机系统', image_url: 'https://picsum.photos/seed/iphone/400/300', product_url: 'https://www.apple.com/shop/buy-iphone/iphone-15-pro', category_id: 1, user_id: 1, tags: '手机,苹果,数码', created_at: '2024-01-15T10:00:00.000Z' },
-    { id: 2, name: 'MacBook Air M3', description: '轻薄便携，续航超长，M3芯片强劲性能', image_url: 'https://picsum.photos/seed/macbook/400/300', product_url: 'https://www.apple.com/shop/buy-mac/macbook-air-13-and-15-m3', category_id: 1, user_id: 1, tags: '电脑,苹果,办公', created_at: '2024-01-20T10:00:00.000Z' },
-    { id: 3, name: 'AirPods Pro 2', description: '主动降噪，空间音频，MagSafe充电盒', image_url: 'https://picsum.photos/seed/airpods/400/300', product_url: 'https://www.apple.com/shop/product/MQXG3AM/A/airpods-pro-2nd-generation', category_id: 1, user_id: 1, tags: '耳机,苹果,音乐', created_at: '2024-01-25T10:00:00.000Z' },
-    { id: 4, name: '戴森吸尘器 V15', description: '强劲吸力，激光探测，LCD显示屏', image_url: 'https://picsum.photos/seed/dyson/400/300', product_url: '', category_id: 2, user_id: 1, tags: '家电,清洁,戴森', created_at: '2024-02-01T10:00:00.000Z' },
-    { id: 5, name: 'SK-II 神仙水', description: '护肤精华液，改善肌肤状态的神器', image_url: 'https://picsum.photos/seed/sk2/400/300', product_url: '', category_id: 2, user_id: 1, tags: '护肤,美妆,神仙水', created_at: '2024-02-05T10:00:00.000Z' },
-    { id: 6, name: '星巴克随行杯', description: '不锈钢保温杯，创意设计，环保又时尚', image_url: 'https://picsum.photos/seed/starbucks/400/300', product_url: '', category_id: 3, user_id: 1, tags: '杯子,星巴克,保温', created_at: '2024-02-10T10:00:00.000Z' },
-    { id: 7, name: 'Nintendo Switch', description: '家用掌机新概念，多人同乐必备', image_url: 'https://picsum.photos/seed/switch/400/300', product_url: 'https://www.nintendo.com/switch/', category_id: 6, user_id: 1, tags: '游戏机,任天堂,游戏', created_at: '2024-02-15T10:00:00.000Z' },
-    { id: 8, name: '索尼 PS5', description: '下一代游戏主机，4K画质，沉浸式体验', image_url: 'https://picsum.photos/seed/ps5/400/300', product_url: 'https://www.playstation.com/ps5/', category_id: 6, user_id: 1, tags: '游戏机,索尼,游戏', created_at: '2024-02-20T10:00:00.000Z' },
-    { id: 9, name: '《三体》全套', description: '刘慈欣科幻巨著，值得反复阅读', image_url: 'https://picsum.photos/seed/santi/400/300', product_url: '', category_id: 5, user_id: 1, tags: '图书,科幻,小说', created_at: '2024-02-25T10:00:00.000Z' },
-    { id: 10, name: 'lululemon瑜伽裤', description: '高弹面料，舒适透气，时尚运动风', image_url: 'https://picsum.photos/seed/lulu/400/300', product_url: '', category_id: 4, user_id: 1, tags: '运动,瑜伽,lululemon', created_at: '2024-03-01T10:00:00.000Z' },
-    { id: 11, name: 'Air Jordan 1', description: '经典篮球鞋，潮流百搭神器', image_url: 'https://picsum.photos/seed/jordan/400/300', product_url: '', category_id: 4, user_id: 1, tags: '鞋,Nike,篮球', created_at: '2024-03-05T10:00:00.000Z' },
-    { id: 12, name: 'Apple Watch S9', description: '智能手表，健康监测，时尚配件', image_url: 'https://picsum.photos/seed/watch/400/300', product_url: 'https://www.apple.com/watch/', category_id: 1, user_id: 1, tags: '手表,苹果,智能穿戴', created_at: '2024-03-10T10:00:00.000Z' },
-    { id: 13, name: 'Tesla Model 3', description: '纯电动智能轿车，自动驾驶领先', image_url: 'https://picsum.photos/seed/tesla3/400/300', product_url: 'https://www.tesla.com/model3', category_id: 10, user_id: 1, tags: '汽车,特斯拉,电动车', created_at: '2024-03-15T10:00:00.000Z' },
-    { id: 14, name: 'iPad Pro M4', description: '专业级平板电脑，M4芯片强大性能', image_url: 'https://picsum.photos/seed/ipad/400/300', product_url: 'https://www.apple.com/ipad-pro/', category_id: 1, user_id: 1, tags: '平板,苹果,办公', created_at: '2024-03-20T10:00:00.000Z' },
-    { id: 15, name: '索尼 WH-1000XM5', description: '顶级降噪耳机，音质卓越', image_url: 'https://picsum.photos/seed/sony headphone/400/300', product_url: '', category_id: 1, user_id: 1, tags: '耳机,索尼,降噪', created_at: '2024-03-25T10:00:00.000Z' },
-    { id: 16, name: '宜家马尔姆床架', description: '简约北欧风，实用收纳设计', image_url: 'https://picsum.photos/seed/ikea bed/400/300', product_url: 'https://www.ikea.com/', category_id: 9, user_id: 1, tags: '家居,宜家,床', created_at: '2024-04-01T10:00:00.000Z' },
-    { id: 17, name: '优衣库联名T恤', description: '设计师联名款，舒适纯棉', image_url: 'https://picsum.photos/seed/uniqlo/400/300', product_url: '', category_id: 4, user_id: 1, tags: '服饰,优衣库,T恤', created_at: '2024-04-05T10:00:00.000Z' },
-    { id: 18, name: '雅思剑桥英语', description: '官方真题集备考必备', image_url: 'https://picsum.photos/seed/ielts/400/300', product_url: '', category_id: 12, user_id: 1, tags: '图书,教育,英语', created_at: '2024-04-10T10:00:00.000Z' },
-    { id: 19, name: '海蓝之谜面霜', description: '奢华护肤修护神器', image_url: 'https://picsum.photos/seed/lamer/400/300', product_url: '', category_id: 7, user_id: 1, tags: '美妆,海蓝之谜,面霜', created_at: '2024-04-15T10:00:00.000Z' },
-    { id: 20, name: '瑜伽健身垫', description: '加厚防滑专业瑜伽垫', image_url: 'https://picsum.photos/seed/yoga mat/400/300', product_url: '', category_id: 8, user_id: 1, tags: '运动,瑜伽,健身', created_at: '2024-04-20T10:00:00.000Z' },
-    { id: 21, name: '任天堂王国之泪', description: '开放世界冒险神作', image_url: 'https://picsum.photos/seed/totk/400/300', product_url: 'https://www.nintendo.com/', category_id: 6, user_id: 1, tags: '游戏,任天堂,塞尔达', created_at: '2024-04-25T10:00:00.000Z' },
-    { id: 22, name: '无印良品超声波香薰机', description: '静音加湿香薰一体', image_url: 'https://picsum.photos/seed/aroma/400/300', product_url: '', category_id: 9, user_id: 1, tags: '家居,无印良品,香薰', created_at: '2024-05-01T10:00:00.000Z' },
-    { id: 23, name: '丰田卡罗拉', description: '家用轿车经典款', image_url: 'https://picsum.photos/seed/corolla/400/300', product_url: '', category_id: 10, user_id: 1, tags: '汽车,丰田,家用', created_at: '2024-05-05T10:00:00.000Z' },
-    { id: 24, name: '阿迪达斯跑鞋', description: 'Boost缓震跑步鞋', image_url: 'https://picsum.photos/seed/adidas shoes/400/300', product_url: '', category_id: 8, user_id: 1, tags: '运动,阿迪达斯,跑鞋', created_at: '2024-05-10T10:00:00.000Z' }
-  ],
-  likes: [
-    { id: 1, user_id: 1, product_id: 1, created_at: '2024-01-16T10:00:00.000Z' },
-    { id: 2, user_id: 1, product_id: 7, created_at: '2024-01-17T10:00:00.000Z' },
-    { id: 3, user_id: 1, product_id: 8, created_at: '2024-01-18T10:00:00.000Z' }
-  ],
-  comments: [
-    { id: 1, user_id: 1, product_id: 1, content: '真的很棒！', created_at: '2024-01-16T10:00:00.000Z' },
-    { id: 2, user_id: 1, product_id: 7, content: '塞尔达传说太好玩了！', created_at: '2024-01-17T10:00:00.000Z' },
-    { id: 3, user_id: 1, product_id: 9, content: '三体世界观太震撼了', created_at: '2024-01-18T10:00:00.000Z' }
-  ],
+  products: [],
+  likes: [],
+  comments: [],
   comment_likes: [],
   ratings: [],
   favorites: [],
@@ -169,18 +53,7 @@ const defaultData = {
   notifications: [],
   follows: [],
   history: [],
-  posts: [],
-  post_comments: [],
-  messages: [],
-  collections: [],
-  product_follows: [],
-  votes: [],
-  qas: [],
-  lives: [],
-  dao_votes: [],
-  nfts: [],
-  time_capsules: [],
-  nextIds: { users: 2, brands: 21, products: 25, likes: 4, comments: 4, comment_likes: 1, favorites: 1, reports: 1, notifications: 1, follows: 1, history: 1, posts: 1, messages: 1, collections: 1 }
+  nextIds: { users: 2, brands: 1, products: 1, likes: 1, comments: 1 }
 };
 
 let db = { ...defaultData };
@@ -190,7 +63,6 @@ function genId(type) {
   return id;
 }
 
-// Flatten categories for filtering
 function flattenCategories(categories, parentId = null) {
   let result = [];
   categories.forEach(cat => {
@@ -217,25 +89,14 @@ app.get('/api/products', (req, res) => {
     products = products.filter(p => p.name.toLowerCase().includes(s) || p.tags?.toLowerCase().includes(s));
   }
   if (category_id) {
-    const flatCats = flattenCategories(db.categories);
     const targetId = parseInt(category_id);
-    // Get category and all its children
     const getChildIds = (cats, pid) => {
       let ids = [pid];
       cats.forEach(c => {
         if (c.id === pid && c.children) {
-          c.children.forEach(child => {
-            ids = ids.concat(getChildIds(cats, child.id));
-            if (child.children) {
-              child.children.forEach(sub => ids.push(sub.id));
-            }
-          });
+          c.children.forEach(child => ids = ids.concat(getChildIds(cats, child.id)));
         }
-        if (c.children) {
-          c.children.forEach(child => {
-            if (child.id === pid) ids = ids.concat(getChildIds(c.children, child.id));
-          });
-        }
+        if (c.children) c.children.forEach(child => { if (child.id === pid) ids = ids.concat(getChildIds(c.children, child.id)); });
       });
       return ids;
     };
@@ -252,11 +113,9 @@ app.get('/api/products/:id', (req, res) => {
   const likes = db.likes.filter(l => l.product_id === product.id);
   const comments = db.comments.filter(c => c.product_id === product.id).map(c => {
     const user = db.users.find(u => u.id === c.user_id);
-    return { ...c, username: user?.username, like_count: db.comment_likes.filter(cl => cl.comment_id === c.id).length, is_liked: false, replies: [] };
+    return { ...c, username: user?.username, like_count: 0, is_liked: false, replies: [] };
   });
-  const rating = db.ratings.filter(r => r.product_id === product.id);
-  const avgRating = rating.length ? rating.reduce((a, b) => a + b.score, 0) / rating.length : 0;
-  res.json({ ...product, like_count: likes.length, comment_count: comments.length, comments, ratings: rating, average_rating: avgRating.toFixed(1) });
+  res.json({ ...product, like_count: likes.length, comment_count: comments.length, comments });
 });
 
 app.post('/api/products', (req, res) => {
@@ -266,14 +125,6 @@ app.post('/api/products', (req, res) => {
   const product = { id: genId('products'), user_id: user.id, name, description, image_url, product_url, category_id: parseInt(category_id), tags, created_at: new Date().toISOString() };
   db.products.push(product);
   res.json(product);
-});
-
-app.delete('/api/products/:id', (req, res) => {
-  const { username } = req.body;
-  const user = db.users.find(u => u.username === username);
-  if (!user || !user.is_admin) return res.status(403).json({ error: '无权限' });
-  db.products = db.products.filter(p => p.id !== parseInt(req.params.id));
-  res.json({ success: true });
 });
 
 // Like
@@ -313,7 +164,7 @@ app.post('/api/favorites', (req, res) => {
     db.favorites = db.favorites.filter(f => f !== existing);
     res.json({ favorited: false });
   } else {
-    db.favorites.push({ id: genId('favorites'), user_id: user.id, product_id: parseInt(product_id), created_at: new Date().toISOString() });
+    db.favorites.push({ id: 1, user_id: user.id, product_id: parseInt(product_id), created_at: new Date().toISOString() });
     res.json({ favorited: true });
   }
 });
@@ -360,26 +211,13 @@ app.get('/api/categories/:id', (req, res) => {
   const findCategory = (cats, id) => {
     for (const cat of cats) {
       if (cat.id === id) return cat;
-      if (cat.children) {
-        const found = findCategory(cat.children, id);
-        if (found) return found;
-      }
+      if (cat.children) { const found = findCategory(cat.children, id); if (found) return found; }
     }
     return null;
   };
   const category = findCategory(db.categories, targetId);
   if (!category) return res.status(404).json({ error: '分类不存在' });
-  
-  // Get all product IDs in this category and subcategories
-  const getAllProductIds = (cat) => {
-    let ids = [cat.id];
-    if (cat.children) {
-      cat.children.forEach(child => {
-        ids = ids.concat(getAllProductIds(child));
-      });
-    }
-    return ids;
-  };
+  const getAllProductIds = (cat) => { let ids = [cat.id]; if (cat.children) cat.children.forEach(child => ids = ids.concat(getAllProductIds(child))); return ids; };
   const allIds = getAllProductIds(category);
   const products = db.products.filter(p => allIds.includes(p.category_id)).map(p => ({ ...p, like_count: db.likes.filter(l => l.product_id === p.id).length }));
   res.json({ ...category, products });
@@ -387,13 +225,6 @@ app.get('/api/categories/:id', (req, res) => {
 
 // Brands
 app.get('/api/brands', (req, res) => res.json(db.brands));
-
-app.get('/api/brands/:id', (req, res) => {
-  const brand = db.brands.find(b => b.id === parseInt(req.params.id));
-  if (!brand) return res.status(404).json({ error: '品牌不存在' });
-  const products = db.products.filter(p => p.tags?.toLowerCase().includes(brand.name.toLowerCase())).map(p => ({ ...p, like_count: db.likes.filter(l => l.product_id === p.id).length }));
-  res.json({ ...brand, products });
-});
 
 // Weekly top
 app.get('/api/weekly', (req, res) => {
@@ -423,15 +254,7 @@ app.get('/api/ranking', (req, res) => {
 app.get('/api/user/:username', (req, res) => {
   const user = db.users.find(u => u.username === req.params.username);
   if (!user) return res.status(404).json({ error: '用户不存在' });
-  res.json({ id: user.id, username: user.username, avatar: user.avatar, bio: user.bio, created_at: user.created_at, is_admin: user.is_admin, points: user.points || 0, checkin_days: user.checkin_days || 0 });
-});
-
-app.put('/api/user/avatar', (req, res) => {
-  const { username, avatar } = req.body;
-  const user = db.users.find(u => u.username === username);
-  if (!user) return res.status(401).json({ error: '请先登录' });
-  user.avatar = avatar;
-  res.json({ success: true });
+  res.json({ id: user.id, username: user.username, avatar: user.avatar, bio: user.bio, created_at: user.created_at, is_admin: user.is_admin, points: user.points || 0 });
 });
 
 // Check-in
@@ -472,22 +295,9 @@ app.get('/api/compare', (req, res) => {
   res.json(products);
 });
 
-// Events
-app.get('/api/events', (req, res) => {
-  res.json([
-    { id: 1, title: '春季新品大赏', description: '春季新品首发，限时优惠', start: '2024-03-01', end: '2024-03-31', banner: 'https://picsum.photos/seed/event1/800/200' },
-    { id: 2, title: '夏日清凉季', description: '消暑神器专场', start: '2024-06-01', end: '2024-08-31', banner: 'https://picsum.photos/seed/event2/800/200' }
-  ]);
-});
-
 // Admin stats
 app.get('/api/admin/stats', (req, res) => {
-  res.json({
-    total_users: db.users.length,
-    total_products: db.products.length,
-    total_likes: db.likes.length,
-    total_comments: db.comments.length
-  });
+  res.json({ total_users: db.users.length, total_products: db.products.length, total_likes: db.likes.length, total_comments: db.comments.length });
 });
 
 module.exports = app;
