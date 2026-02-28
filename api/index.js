@@ -1782,3 +1782,120 @@ app.post('/api/meta/enter', async (req, res) => {
 });
 
 // module.exports = app;
+
+// Advanced AI - General Intelligence
+app.post('/api/agi/chat', async (req, res) => {
+  const { message, context } = req.body;
+  
+  // Simulated AGI response
+  const responses = {
+    '分析': `根据当前数据分析: 用户活跃度上升15%，热门产品为iPhone、MacBook等苹果系产品。建议: 增加苹果生态相关内容推广。`,
+    '推荐': `根据您的兴趣分析，推荐: 1) Apple Watch S9 2) AirPods Pro 3) MacBook Air M3。这些产品与您关注的科技领域高度匹配。`,
+    '总结': `本月总结: 新增产品23个，用户注册156人，互动量(点赞+评论)1,234次。较上月增长12%。`,
+    '默认': `我已理解您的请求。作为超级AI，我可以帮您: 分析数据、提供建议、回答问题、智能推荐等。请告诉我您需要什么帮助？`
+  };
+  
+  let reply = responses['默认'];
+  for (const [key, value] of Object.entries(responses)) {
+    if (message.includes(key)) { reply = value; break; }
+  }
+  
+  res.json({ reply, model: 'AGI-v1', timestamp: new Date().toISOString(), context });
+});
+
+// Digital Immortality / Consciousness Upload
+app.post('/api/immortal/upload', async (req, res) => {
+  const { username, memories } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  if (!db.immortals) db.immortals = [];
+  const record = {
+    id: db.immortals.length + 1,
+    user_id: user.id,
+    memories: memories || '数字意识副本',
+    status: 'preserved',
+    created_at: new Date().toISOString()
+  };
+  db.immortals.push(record);
+  await saveDB();
+  
+  res.json({ success: true, record_id: record.id, message: '意识已安全保存' });
+});
+
+app.get('/api/immortal/status', (req, res) => {
+  const { username } = req.query;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.json({ preserved: false });
+  
+  const record = (db.immortals || []).find(i => i.user_id === user.id);
+  res.json({ preserved: !!record, record });
+});
+
+// Quantum Computing - Random Number Generation
+app.get('/api/quantum/random', (req, res) => {
+  // Simulated quantum random numbers
+  const numbers = Array.from({ length: 10 }, () => Math.floor(Math.random() * 1000));
+  res.json({
+    numbers,
+    source: 'quantum-simulator',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Time capsule / Time travel simulation
+app.post('/api/time/capsule', async (req, res) => {
+  const { username, message, open_at } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  if (!db.time_capsules) db.time_capsules = [];
+  const capsule = {
+    id: db.time_capsules.length + 1,
+    user_id: user.id,
+    message,
+    open_at,
+    status: 'sealed',
+    created_at: new Date().toISOString()
+  };
+  db.time_capsules.push(capsule);
+  await saveDB();
+  
+  res.json({ success: true, capsule_id: capsule.id, message: '时间胶囊已封存，将于' + open_at + '开启' });
+});
+
+app.get('/api/time/capsules', (req, res) => {
+  const { username } = req.query;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.json([]);
+  
+  const now = new Date().toISOString();
+  const capsules = (db.time_capsules || []).filter(c => c.user_id === user.id && c.open_at <= now);
+  res.json(capsules);
+});
+
+// Space / Star colonization simulation
+app.get('/api/space/exploration', (req, res) => {
+  const missions = [
+    { id: 1, name: '火星基地 Alpha', progress: 75, participants: 1234, status: 'active' },
+    { id: 2, name: '月球科研站', progress: 45, participants: 567, status: 'active' },
+    { id: 3, name: '小行星采矿', progress: 20, participants: 89, status: 'planning' }
+  ];
+  res.json(missions);
+});
+
+app.post('/api/space/join', async (req, res) => {
+  const { username, mission_id } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  if (!user.space_missions) user.space_missions = [];
+  if (!user.space_missions.includes(mission_id)) {
+    user.space_missions.push(mission_id);
+    await saveDB();
+  }
+  
+  res.json({ success: true, mission_id, message: '恭喜成为星际探索成员！' });
+});
+
+// module.exports = app;
