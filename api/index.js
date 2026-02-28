@@ -92,11 +92,11 @@ const defaultData = {
   brands: brands.map((name, i) => ({ id: i+1, name, logo: `https://placehold.co/100x100/4f46e5/ffffff?text=${name.charAt(0)}`, description: name })),
   users: [{ id: 1, username: 'demo', password: '123456', is_admin: true, avatar: '', bio: '演示账号', created_at: '2024-01-01T00:00:00.000Z' }],
   categories: categories,
-  products: generateProducts(),
+  products: [],
   likes: [],
   comments: [],
   favorites: [],
-  nextIds: { users: 2, products: 3001 }
+  nextIds: { users: 2, products: 1 }
 };
 
 let db = { ...defaultData };
