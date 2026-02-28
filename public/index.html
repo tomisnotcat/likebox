@@ -7,29 +7,46 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .dark { --bg-primary: #1a1a2e; --bg-secondary: #16213e; --text-primary: #eee; --text-secondary: #aaa; }
+        .dark body { background-color: var(--bg-primary); color: var(--text-primary); }
+        .dark .bg-white { background-color: var(--bg-secondary); }
+        .dark .text-gray-800 { color: var(--text-primary); }
+        .dark .text-gray-700 { color: var(--text-secondary); }
+        .dark .border { border-color: #333; }
+    </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
-    <div id="app">
+    <div id="app" :class="{ dark: darkMode }">
         <nav class="bg-white shadow-sm sticky top-0 z-50">
             <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
                 <h1 class="text-xl font-bold text-indigo-600 cursor-pointer" @click="goHome">
                     <i class="fas fa-heart"></i> LikeBox
                 </h1>
                 
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <button @click="darkMode = !darkMode" class="p-2 text-gray-600 hover:text-indigo-600">
+                        <i class="fas" :class="darkMode ? 'fa-sun' : 'fa-moon'"></i>
+                    </button>
+                    
+                    <button @click="showNotifications = true; loadNotifications()" class="relative p-2 text-gray-600 hover:text-indigo-600">
+                        <i class="fas fa-bell"></i>
+                        <span v-if="unreadCount > 0" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">{{ unreadCount }}</span>
+                    </button>
+                    
                     <button @click="showRanking = true; loadRanking()" class="text-gray-600 hover:text-indigo-600">
-                        <i class="fas fa-trophy"></i> 排行榜
+                        <i class="fas fa-trophy"></i>
                     </button>
                     <button @click="showProductRanking = true; loadProductRanking()" class="text-gray-600 hover:text-indigo-600">
-                        <i class="fas fa-fire"></i> 热门
+                        <i class="fas fa-fire"></i>
                     </button>
                     
                     <template v-if="currentUser">
                         <button @click="showProfile = true; loadUserData()" class="text-gray-600 hover:text-indigo-600">
-                            <i class="fas fa-user"></i> 我的
+                            <i class="fas fa-user"></i>
                         </button>
-                        <div class="flex items-center gap-3">
-                            <span class="text-gray-600">👤 {{ currentUser }}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-gray-600">{{ currentUser }}</span>
                             <button @click="logout" class="text-sm text-gray-500 hover:text-gray-700">退出</button>
                         </div>
                     </template>
@@ -116,6 +133,7 @@
             </div>
         </main>
 
+        <!-- Login -->
         <div v-if="showLogin" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showLogin = false">
             <div class="bg-white rounded-xl p-6 w-96">
                 <h2 class="text-xl font-bold mb-4">{{ isRegister ? '注册' : '登录' }}</h2>
@@ -131,6 +149,7 @@
             </div>
         </div>
 
+        <!-- Add Product -->
         <div v-if="showAddProduct" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showAddProduct = false">
             <div class="bg-white rounded-xl p-6 w-full max-w-lg">
                 <h2 class="text-xl font-bold mb-4">添加产品</h2>
@@ -149,6 +168,7 @@
             </div>
         </div>
 
+        <!-- Product Detail -->
         <div v-if="selectedProduct" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="selectedProduct = null">
             <div class="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                 <div v-if="selectedProduct.image_url" class="h-64 bg-gray-200 relative">
@@ -167,6 +187,9 @@
                         <div class="flex items-center gap-2">
                             <button @click="shareProduct(selectedProduct)" class="p-2 text-gray-400 hover:text-indigo-600 rounded-full hover:bg-gray-100">
                                 <i class="fas fa-share-alt"></i>
+                            </button>
+                            <button @click="showReport = true" class="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100">
+                                <i class="fas fa-flag"></i>
                             </button>
                             <button v-if="isAdmin || selectedProduct.user_id === currentUserId" @click="deleteProduct(selectedProduct.id)" class="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100">
                                 <i class="fas fa-trash"></i>
@@ -202,10 +225,11 @@
                             <div v-for="comment in comments" :key="comment.id" class="bg-gray-50 rounded-lg p-3">
                                 <div class="flex items-center justify-between mb-1">
                                     <div class="flex items-center gap-2">
-                                        <span class="font-medium text-sm">{{ comment.username }}</span>
+                                        <button @click="showUserProfile(comment.username)" class="font-medium text-sm hover:text-indigo-600">{{ comment.username }}</button>
                                         <span class="text-xs text-gray-400">{{ formatDate(comment.created_at) }}</span>
                                     </div>
                                     <div class="flex items-center gap-2">
+                                        <button @click="showReplyInput(comment)" class="text-xs text-gray-400 hover:text-indigo-600">回复</button>
                                         <button @click="toggleCommentLike(comment)" class="text-sm flex items-center gap-1" :class="comment.is_liked ? 'text-red-500' : 'text-gray-400 hover:text-red-500'">
                                             <i class="fas fa-heart" :class="comment.is_liked ? 'fa-solid' : 'fa-regular'"></i>
                                             <span>{{ comment.like_count }}</span>
@@ -216,6 +240,20 @@
                                     </div>
                                 </div>
                                 <p class="text-gray-700">{{ comment.content }}</p>
+                                
+                                <div v-if="comment.replies && comment.replies.length" class="mt-2 pl-3 border-l-2 border-gray-200 space-y-2">
+                                    <div v-for="reply in comment.replies" :key="reply.id" class="text-sm">
+                                        <button @click="showUserProfile(reply.username)" class="font-medium text-indigo-600 hover:text-indigo-800">{{ reply.username }}</button>
+                                        <span class="text-gray-600"> 回复 </span>
+                                        <span class="text-gray-700">{{ reply.content }}</span>
+                                    </div>
+                                </div>
+                                
+                                <div v-if="replyingTo === comment.id" class="mt-2 flex gap-2">
+                                    <input v-model="replyContent" @keyup.enter="submitReply(comment.id)" type="text" placeholder="回复..." class="flex-1 px-3 py-1 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <button @click="submitReply(comment.id)" class="px-3 py-1 bg-indigo-600 text-white text-sm rounded-lg">发送</button>
+                                    <button @click="replyingTo = null" class="px-3 py-1 text-gray-500 text-sm">取消</button>
+                                </div>
                             </div>
                             
                             <p v-if="comments.length === 0" class="text-gray-400 text-center py-4">暂无评论</p>
@@ -225,8 +263,21 @@
             </div>
         </div>
 
-        <div v-if="showRanking" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showRanking = false">
+        <!-- Report -->
+        <div v-if="showReport" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showReport = false">
             <div class="bg-white rounded-xl p-6 w-full max-w-md">
+                <h2 class="text-xl font-bold mb-4"><i class="fas fa-flag text-red-500"></i> 举报产品</h2>
+                <textarea v-model="reportReason" placeholder="请输入举报原因..." rows="4" class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                <div class="flex gap-3">
+                    <button @click="showReport = false" class="flex-1 border py-2 rounded-lg hover:bg-gray-50">取消</button>
+                    <button @click="submitReport" class="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700">提交举报</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ranking -->
+        <div v-if="showRanking" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showRanking = false">
+            <div class="bg-white rounded-xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-xl font-bold"><i class="fas fa-trophy text-yellow-500"></i> 贡献排行榜</h2>
                     <button @click="showRanking = false" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
@@ -234,8 +285,9 @@
                 <div class="space-y-3">
                     <div v-for="(user, index) in ranking" :key="user.username" class="flex items-center gap-3 p-3 rounded-lg" :class="index === 0 ? 'bg-yellow-50' : index === 1 ? 'bg-gray-50' : index === 2 ? 'bg-orange-50' : 'bg-gray-50'">
                         <span class="w-8 text-center font-bold" :class="index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-orange-400' : 'text-gray-500'">{{ index + 1 }}</span>
+                        <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">{{ user.username.charAt(0).toUpperCase() }}</div>
                         <div class="flex-1">
-                            <div class="font-medium">{{ user.username }}</div>
+                            <button @click="showUserProfile(user.username); showRanking = false" class="font-medium hover:text-indigo-600">{{ user.username }}</button>
                             <div class="text-xs text-gray-500">
                                 <span class="text-indigo-600">{{ user.product_count }} 个产品</span>
                                 <span class="ml-2 text-red-500">{{ user.like_count }} 个赞</span>
@@ -247,6 +299,7 @@
             </div>
         </div>
 
+        <!-- Product Ranking -->
         <div v-if="showProductRanking" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showProductRanking = false">
             <div class="bg-white rounded-xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto">
                 <div class="flex items-center justify-between mb-4">
@@ -272,6 +325,7 @@
             </div>
         </div>
 
+        <!-- Profile -->
         <div v-if="showProfile" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showProfile = false">
             <div class="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
                 <div class="flex items-center justify-between mb-4">
@@ -282,6 +336,8 @@
                 <div class="flex gap-2 mb-4">
                     <button @click="profileTab = 'products'" class="px-4 py-2 rounded-lg" :class="profileTab === 'products' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'">我添加的产品</button>
                     <button @click="profileTab = 'favorites'" class="px-4 py-2 rounded-lg" :class="profileTab === 'favorites' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'"><i class="fas fa-star text-yellow-500"></i> 收藏夹</button>
+                    <button @click="profileTab = 'history'" class="px-4 py-2 rounded-lg" :class="profileTab === 'history' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'"><i class="fas fa-history"></i> 浏览历史</button>
+                    <button @click="profileTab = 'following'" class="px-4 py-2 rounded-lg" :class="profileTab === 'following' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'"><i class="fas fa-users"></i> 关注</button>
                 </div>
                 
                 <div v-if="profileTab === 'products'" class="space-y-3">
@@ -308,6 +364,68 @@
                     </div>
                     <p v-if="myFavorites.length === 0" class="text-gray-400 text-center py-4">还没有收藏产品</p>
                 </div>
+
+                <div v-if="profileTab === 'history'" class="space-y-3">
+                    <div v-for="product in myHistory" :key="product.id" class="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer" @click="viewProduct(product); showProfile = false">
+                        <div v-if="product.image_url" class="w-12 h-12 rounded-lg bg-gray-200 flex-shrink-0"><img :src="product.image_url" class="w-full h-full object-cover rounded-lg"></div>
+                        <div v-else class="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center flex-shrink-0"><i class="fas fa-box text-indigo-300"></i></div>
+                        <div class="flex-1 min-w-0">
+                            <div class="font-medium truncate">{{ product.name }}</div>
+                            <div class="text-xs text-gray-500"><span class="text-red-500"><i class="fas fa-heart"></i> {{ product.like_count }}</span></div>
+                        </div>
+                    </div>
+                    <p v-if="myHistory.length === 0" class="text-gray-400 text-center py-4">暂无浏览历史</p>
+                </div>
+
+                <div v-if="profileTab === 'following'" class="space-y-3">
+                    <div v-for="user in followingList" :key="user.id" class="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100">
+                        <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">{{ user.username.charAt(0).toUpperCase() }}</div>
+                        <div class="flex-1">
+                            <button @click="showUserProfile(user.username); showProfile = false" class="font-medium hover:text-indigo-600">{{ user.username }}</button>
+                        </div>
+                        <button @click="toggleFollow(user.id)" class="px-3 py-1 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">已关注</button>
+                    </div>
+                    <p v-if="followingList.length === 0" class="text-gray-400 text-center py-4">还没有关注任何人</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications -->
+        <div v-if="showNotifications" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showNotifications = false">
+            <div class="bg-white rounded-xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold"><i class="fas fa-bell text-indigo-600"></i> 消息通知</h2>
+                    <button @click="showNotifications = false" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
+                </div>
+                <div v-if="currentUser" class="mb-4">
+                    <button @click="markAllRead" class="text-sm text-indigo-600 hover:text-indigo-800">全部标为已读</button>
+                </div>
+                <div class="space-y-3">
+                    <div v-for="notif in notifications" :key="notif.id" class="p-3 rounded-lg" :class="notif.read ? 'bg-gray-50' : 'bg-indigo-50'">
+                        <p class="text-sm" :class="notif.read ? 'text-gray-600' : 'text-gray-800'">{{ notif.content }}</p>
+                        <p class="text-xs text-gray-400 mt-1">{{ formatDate(notif.created_at) }}</p>
+                    </div>
+                    <p v-if="notifications.length === 0" class="text-gray-400 text-center py-4">暂无通知</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Modal -->
+        <div v-if="showUserModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showUserModal = false">
+            <div class="bg-white rounded-xl p-6 w-full max-w-md">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold">用户资料</h2>
+                    <button @click="showUserModal = false" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="text-center mb-6">
+                    <div class="w-20 h-20 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-3xl mx-auto mb-3">{{ userModalInfo.username.charAt(0).toUpperCase() }}</div>
+                    <h3 class="text-xl font-bold">{{ userModalInfo.username }}</h3>
+                </div>
+                <div class="flex justify-center gap-3">
+                    <button v-if="currentUser && currentUser !== userModalInfo.username" @click="toggleFollow(userModalInfo.id)" class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                        {{ isFollowing ? '已关注' : '关注' }}
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -318,274 +436,5 @@
         createApp({
             data() {
                 return {
-                    currentUser: localStorage.getItem('username') || null,
-                    currentUserId: null,
-                    isAdmin: false,
-                    products: [],
-                    categories: [],
-                    comments: [],
-                    tags: [],
-                    selectedProduct: null,
-                    showLogin: false,
-                    showAddProduct: false,
-                    showRanking: false,
-                    showProductRanking: false,
-                    showProfile: false,
-                    ranking: [],
-                    productRanking: [],
-                    myProducts: [],
-                    myFavorites: [],
-                    profileTab: 'products',
-                    rankingCategoryId: null,
-                    isRegister: false,
-                    search: '',
-                    categoryId: null,
-                    sort: 'latest',
-                    authForm: { username: '', password: '' },
-                    productForm: { name: '', description: '', image_url: '', product_url: '', tags: '', category_id: 1 },
-                    newComment: ''
-                }
-            },
-            mounted() {
-                this.loadCategories();
-                this.loadProducts();
-                this.loadTags();
-                this.checkUser();
-                
-                const urlParams = new URLSearchParams(window.location.search);
-                const productId = urlParams.get('product');
-                if (productId) {
-                    this.loadProductById(productId);
-                }
-            },
-            methods: {
-                async checkUser() {
-                    if (!this.currentUser) return;
-                    const res = await fetch(`/api/user?username=${this.currentUser}`);
-                    const user = await res.json();
-                    if (user) {
-                        this.currentUserId = user.id;
-                        this.isAdmin = user.is_admin;
-                    }
-                },
-                goHome() {
-                    this.selectedProduct = null;
-                    this.categoryId = null;
-                    this.search = '';
-                    this.loadProducts();
-                    window.history.pushState({}, '', '/');
-                },
-                async loadCategories() {
-                    const res = await fetch('/api/categories');
-                    this.categories = await res.json();
-                },
-                async loadTags() {
-                    const res = await fetch('/api/tags');
-                    this.tags = await res.json();
-                },
-                async loadProducts() {
-                    const params = new URLSearchParams();
-                    if (this.categoryId) params.append('category_id', this.categoryId);
-                    if (this.search) params.append('search', this.search);
-                    params.append('sort', this.sort);
-                    if (this.currentUser) params.append('username', this.currentUser);
-                    
-                    const res = await fetch(`/api/products?${params}`);
-                    this.products = await res.json();
-                },
-                searchTag(tag) {
-                    this.search = tag;
-                    this.loadProducts();
-                },
-                async loadProductById(id) {
-                    const username = this.currentUser || '';
-                    const res = await fetch(`/api/products/${id}?username=${username}`);
-                    if (res.ok) {
-                        const product = await res.json();
-                        this.selectedProduct = product;
-                        this.loadComments(product.id);
-                    }
-                },
-                async loadRanking() {
-                    const res = await fetch('/api/ranking');
-                    this.ranking = await res.json();
-                },
-                async loadProductRanking() {
-                    const params = new URLSearchParams();
-                    if (this.rankingCategoryId) params.append('category_id', this.rankingCategoryId);
-                    const res = await fetch(`/api/products/ranking?${params}`);
-                    this.productRanking = await res.json();
-                },
-                async loadUserData() {
-                    if (!this.currentUser) return;
-                    const productsRes = await fetch(`/api/user/products?username=${this.currentUser}`);
-                    this.myProducts = await productsRes.json();
-                    const favRes = await fetch(`/api/user/favorites?username=${this.currentUser}`);
-                    this.myFavorites = await favRes.json();
-                },
-                async auth() {
-                    const endpoint = this.isRegister ? '/api/register' : '/api/login';
-                    const res = await fetch(endpoint, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(this.authForm)
-                    });
-                    
-                    if (!res.ok) {
-                        const err = await res.json();
-                        alert(err.detail || '操作失败');
-                        return;
-                    }
-                    
-                    const data = await res.json();
-                    this.currentUser = data.username;
-                    this.currentUserId = data.user_id;
-                    this.isAdmin = data.is_admin;
-                    localStorage.setItem('username', this.currentUser);
-                    this.showLogin = false;
-                    this.authForm = { username: '', password: '' };
-                    this.loadProducts();
-                },
-                logout() {
-                    this.currentUser = null;
-                    this.currentUserId = null;
-                    this.isAdmin = false;
-                    localStorage.removeItem('username');
-                    this.loadProducts();
-                },
-                async addProduct() {
-                    if (!this.currentUser) { alert('请先登录'); return; }
-                    if (!this.productForm.name || !this.productForm.description) { alert('请填写产品名称和描述'); return; }
-                    
-                    const res = await fetch('/api/products', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ ...this.productForm, username: this.currentUser })
-                    });
-                    
-                    if (res.ok) {
-                        this.showAddProduct = false;
-                        this.productForm = { name: '', description: '', image_url: '', product_url: '', tags: '', category_id: 1 };
-                        this.loadProducts();
-                        this.loadTags();
-                    }
-                },
-                async deleteProduct(id) {
-                    if (!confirm('确定删除这个产品吗？')) return;
-                    
-                    const res = await fetch(`/api/products/${id}`, {
-                        method: 'DELETE',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ username: this.currentUser })
-                    });
-                    
-                    if (res.ok) {
-                        this.selectedProduct = null;
-                        this.loadProducts();
-                        this.loadTags();
-                    } else {
-                        alert('删除失败');
-                    }
-                },
-                async viewProduct(product) {
-                    this.selectedProduct = { ...product };
-                    await this.loadComments(product.id);
-                    window.history.pushState({}, '', `?product=${product.id}`);
-                },
-                async loadComments(productId) {
-                    const username = this.currentUser || '';
-                    const res = await fetch(`/api/products/${productId}/comments?username=${username}`);
-                    this.comments = await res.json();
-                },
-                async toggleLike(product) {
-                    if (!this.currentUser) { this.showLogin = true; return; }
-                    
-                    const res = await fetch(`/api/products/${product.id}/like`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ username: this.currentUser })
-                    });
-                    
-                    const data = await res.json();
-                    product.like_count = data.count;
-                    product.is_liked = data.liked;
-                    
-                    if (this.selectedProduct && this.selectedProduct.id === product.id) {
-                        this.selectedProduct.like_count = data.count;
-                        this.selectedProduct.is_liked = data.liked;
-                    }
-                },
-                async toggleFavorite(product) {
-                    if (!this.currentUser) { this.showLogin = true; return; }
-                    
-                    const res = await fetch(`/api/products/${product.id}/favorite`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ username: this.currentUser })
-                    });
-                    
-                    const data = await res.json();
-                    product.is_favorited = data.favorited;
-                    
-                    if (this.selectedProduct && this.selectedProduct.id === product.id) {
-                        this.selectedProduct.is_favorited = data.favorited;
-                    }
-                },
-                async shareProduct(product) {
-                    const url = `${window.location.origin}?product=${product.id}`;
-                    if (navigator.clipboard) {
-                        navigator.clipboard.writeText(url);
-                        alert('链接已复制到剪贴板');
-                    } else {
-                        prompt('复制链接:', url);
-                    }
-                },
-                async submitComment() {
-                    if (!this.newComment.trim()) return;
-                    
-                    const res = await fetch('/api/comments', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ product_id: this.selectedProduct.id, content: this.newComment, username: this.currentUser })
-                    });
-                    
-                    if (res.ok) {
-                        this.newComment = '';
-                        await this.loadComments(this.selectedProduct.id);
-                    }
-                },
-                async deleteComment(id) {
-                    if (!confirm('确定删除这条评论吗？')) return;
-                    
-                    const res = await fetch(`/api/comments/${id}`, {
-                        method: 'DELETE',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ username: this.currentUser })
-                    });
-                    
-                    if (res.ok) {
-                        await this.loadComments(this.selectedProduct.id);
-                    }
-                },
-                async toggleCommentLike(comment) {
-                    if (!this.currentUser) { this.showLogin = true; return; }
-                    
-                    const res = await fetch(`/api/comments/${comment.id}/like`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ username: this.currentUser })
-                    });
-                    
-                    const data = await res.json();
-                    comment.like_count = data.like_count;
-                    comment.is_liked = data.liked;
-                },
-                formatDate(dateStr) {
-                    const d = new Date(dateStr);
-                    return d.toLocaleDateString('zh-CN');
-                }
-            }
-        }).mount('#app');
-    </script>
-</body>
-</html>
+                    darkMode: localStorage.getItem('darkMode') === 'true',
+                    currentUser: localStorage.getItem

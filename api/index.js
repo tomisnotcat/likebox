@@ -8,7 +8,7 @@ app.use(express.json());
 
 const defaultData = {
   users: [
-    { id: 1, username: 'demo', password: '123456', is_admin: true, created_at: '2024-01-01T00:00:00.000Z' }
+    { id: 1, username: 'demo', password: '123456', is_admin: true, avatar: '', bio: '', created_at: '2024-01-01T00:00:00.000Z' }
   ],
   categories: [
     { id: 1, name: '数码' }, { id: 2, name: '生活' }, { id: 3, name: '食品' },
@@ -41,7 +41,11 @@ const defaultData = {
   ],
   comment_likes: [],
   favorites: [],
-  nextIds: { users: 2, products: 13, likes: 4, comments: 4, comment_likes: 1, favorites: 1 }
+  reports: [],
+  notifications: [],
+  follows: [],
+  history: [],
+  nextIds: { users: 2, products: 13, likes: 4, comments: 4, comment_likes: 1, favorites: 1, reports: 1, notifications: 1, follows: 1, history: 1 }
 };
 
 let db;
@@ -81,6 +85,19 @@ function genId(type) {
   return id;
 }
 
+function notify(userId, type, content, link) {
+  const notification = {
+    id: genId('notifications'),
+    user_id: userId,
+    type,
+    content,
+    link,
+    read: false,
+    created_at: new Date().toISOString()
+  };
+  db.notifications.push(notification);
+}
+
 let initPromise = initDB();
 
 app.use(async (req, res, next) => {
@@ -94,7 +111,7 @@ app.post('/api/register', async (req, res) => {
   if (db.users.find(u => u.username === username)) {
     return res.status(400).json({ error: '用户名已存在' });
   }
-  const user = { id: genId('users'), username, password, is_admin: false, created_at: new Date().toISOString() };
+  const user = { id: genId('users'), username, password, is_admin: false, avatar: '', bio: '', created_at: new Date().toISOString() };
   db.users.push(user);
   await saveDB();
   res.json({ id: user.id, username: user.username, is_admin: user.is_admin });
@@ -105,16 +122,29 @@ app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   const user = db.users.find(u => u.username === username && u.password === password);
   if (!user) return res.status(401).json({ error: '用户名或密码错误' });
-  res.json({ user_id: user.id, username: user.username, is_admin: user.is_admin });
+  res.json({ user_id: user.id, username: user.username, is_admin: user.is_admin, avatar: user.avatar, bio: user.bio });
 });
 
-// 获取当前用户信息
+// 获取用户信息
 app.get('/api/user', (req, res) => {
   const { username } = req.query;
   if (!username) return res.json(null);
   const user = db.users.find(u => u.username === username);
   if (!user) return res.json(null);
-  res.json({ id: user.id, username: user.username, is_admin: user.is_admin });
+  res.json({ id: user.id, username: user.username, is_admin: user.is_admin, avatar: user.avatar, bio: user.bio });
+});
+
+// 更新用户信息
+app.put('/api/user', async (req, res) => {
+  const { username, avatar, bio } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(404).json({ error: '用户不存在' });
+  
+  if (avatar !== undefined) user.avatar = avatar;
+  if (bio !== undefined) user.bio = bio;
+  
+  await saveDB();
+  res.json({ success: true });
 });
 
 // 分类列表
@@ -185,7 +215,7 @@ app.post('/api/products', async (req, res) => {
   res.json({ ...product, like_count: 0, is_liked: false, is_favorited: false });
 });
 
-// 删除产品（管理员或创建者）
+// 删除产品
 app.delete('/api/products/:id', async (req, res) => {
   const { username } = req.body;
   const productId = parseInt(req.params.id);
@@ -204,6 +234,7 @@ app.delete('/api/products/:id', async (req, res) => {
   db.likes = db.likes.filter(l => l.product_id !== productId);
   db.comments = db.comments.filter(c => c.product_id !== productId);
   db.favorites = db.favorites.filter(f => f.product_id !== productId);
+  db.reports = db.reports.filter(r => r.product_id !== productId);
   await saveDB();
   
   res.json({ success: true });
@@ -218,7 +249,14 @@ app.post('/api/products/:id/like', async (req, res) => {
   
   const idx = db.likes.findIndex(l => l.user_id === user.id && l.product_id === productId);
   if (idx >= 0) db.likes.splice(idx, 1);
-  else db.likes.push({ id: genId('likes'), user_id: user.id, product_id: productId, created_at: new Date().toISOString() });
+  else {
+    db.likes.push({ id: genId('likes'), user_id: user.id, product_id: productId, created_at: new Date().toISOString() });
+    // 通知
+    const product = db.products.find(p => p.id === productId);
+    if (product && product.user_id !== user.id) {
+      notify(product.user_id, 'like', `${username} 赞了你的产品 "${product.name}"`, `?product=${productId}`);
+    }
+  }
   
   await saveDB();
   res.json({ liked: idx < 0, count: db.likes.filter(l => l.product_id === productId).length });
@@ -239,6 +277,21 @@ app.post('/api/products/:id/favorite', async (req, res) => {
   res.json({ favorited: idx < 0 });
 });
 
+// 举报产品
+app.post('/api/products/:id/report', async (req, res) => {
+  const { username, reason } = req.body;
+  const productId = parseInt(req.params.id);
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  const existing = db.reports.find(r => r.user_id === user.id && r.product_id === productId);
+  if (existing) return res.status(400).json({ error: '已经举报过了' });
+  
+  db.reports.push({ id: genId('reports'), user_id: user.id, product_id: productId, reason, created_at: new Date().toISOString() });
+  await saveDB();
+  res.json({ success: true });
+});
+
 // 评论列表
 app.get('/api/products/:id/comments', (req, res) => {
   const productId = parseInt(req.params.id);
@@ -251,7 +304,11 @@ app.get('/api/products/:id/comments', (req, res) => {
       const user = db.users.find(u => u.id === c.user_id);
       const like_count = db.comment_likes.filter(cl => cl.comment_id === c.id).length;
       const is_liked = userId ? db.comment_likes.some(cl => cl.user_id === userId && cl.comment_id === c.id) : false;
-      return { ...c, username: user?.username || '未知', like_count, is_liked };
+      const replies = db.comments.filter(r => r.reply_to === c.id).map(r => {
+        const replyUser = db.users.find(u => u.id === r.user_id);
+        return { ...r, username: replyUser?.username || '未知' };
+      });
+      return { ...c, username: user?.username || '未知', like_count, is_liked, replies };
     })
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   res.json(comments);
@@ -259,13 +316,28 @@ app.get('/api/products/:id/comments', (req, res) => {
 
 // 添加评论
 app.post('/api/comments', async (req, res) => {
-  const { product_id, content, username } = req.body;
+  const { product_id, content, username, reply_to } = req.body;
   const user = db.users.find(u => u.username === username);
   if (!user) return res.status(401).json({ error: '请先登录' });
-  const comment = { id: genId('comments'), user_id: user.id, product_id, content, created_at: new Date().toISOString() };
+  
+  const comment = { id: genId('comments'), user_id: user.id, product_id, content, reply_to: reply_to || null, created_at: new Date().toISOString() };
   db.comments.push(comment);
+  
+  // 通知
+  const product = db.products.find(p => p.id === product_id);
+  if (product && product.user_id !== user.id) {
+    if (reply_to) {
+      const parentComment = db.comments.find(c => c.id === reply_to);
+      if (parentComment) {
+        notify(parentComment.user_id, 'reply', `${username} 回复了你`, `?product=${product_id}`);
+      }
+    } else {
+      notify(product.user_id, 'comment', `${username} 评论了你的产品 "${product.name}"`, `?product=${product_id}`);
+    }
+  }
+  
   await saveDB();
-  res.json({ ...comment, username: user.username, like_count: 0, is_liked: false });
+  res.json({ ...comment, username: user.username, like_count: 0, is_liked: false, replies: [] });
 });
 
 // 删除评论
@@ -290,7 +362,7 @@ app.delete('/api/comments/:id', async (req, res) => {
   res.json({ success: true });
 });
 
-// 评论点赞/取消点赞
+// 评论点赞
 app.post('/api/comments/:id/like', async (req, res) => {
   const { username } = req.body;
   const commentId = parseInt(req.params.id);
@@ -306,10 +378,50 @@ app.post('/api/comments/:id/like', async (req, res) => {
   res.json({ liked: idx < 0, like_count });
 });
 
+// 关注/取消关注
+app.post('/api/follow/:userId', async (req, res) => {
+  const { username } = req.body;
+  const targetUserId = parseInt(req.params.userId);
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  if (user.id === targetUserId) return res.status(400).json({ error: '不能关注自己' });
+  
+  const idx = db.follows.findIndex(f => f.user_id === user.id && f.following_id === targetUserId);
+  if (idx >= 0) {
+    db.follows.splice(idx, 1);
+  } else {
+    db.follows.push({ id: genId('follows'), user_id: user.id, following_id: targetUserId, created_at: new Date().toISOString() });
+    const targetUser = db.users.find(u => u.id === targetUserId);
+    if (targetUser) notify(targetUserId, 'follow', `${username} 关注了你`, '');
+  }
+  
+  await saveDB();
+  res.json({ followed: idx < 0 });
+});
+
+// 获取用户关注列表
+app.get('/api/followers/:username', (req, res) => {
+  const user = db.users.find(u => u.username === req.params.username);
+  if (!user) return res.json({ followers: [], following: [] });
+  
+  const followers = db.follows.filter(f => f.following_id === user.id).map(f => {
+    const u = db.users.find(u => u.id === f.user_id);
+    return u ? { id: u.id, username: u.username, avatar: u.avatar } : null;
+  }).filter(u => u);
+  
+  const following = db.follows.filter(f => f.user_id === user.id).map(f => {
+    const u = db.users.find(u => u.id === f.following_id);
+    return u ? { id: u.id, username: u.username, avatar: u.avatar } : null;
+  }).filter(u => u);
+  
+  res.json({ followers, following });
+});
+
 // 用户贡献排名
 app.get('/api/ranking', (req, res) => {
   const ranking = db.users.map(u => ({
     username: u.username,
+    avatar: u.avatar,
     product_count: db.products.filter(p => p.user_id === u.id).length,
     like_count: db.likes.filter(l => {
       const userProducts = db.products.filter(p => p.user_id === u.id).map(p => p.id);
@@ -387,6 +499,101 @@ app.get('/api/tags', (req, res) => {
     .slice(0, 20);
   
   res.json(tags);
+});
+
+// 消息通知
+app.get('/api/notifications', (req, res) => {
+  const { username } = req.query;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.json([]);
+  
+  const notifications = db.notifications
+    .filter(n => n.user_id === user.id)
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, 50);
+  
+  res.json(notifications);
+});
+
+// 标记通知已读
+app.put('/api/notifications/read', async (req, res) => {
+  const { username } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  db.notifications.forEach(n => {
+    if (n.user_id === user.id) n.read = true;
+  });
+  
+  await saveDB();
+  res.json({ success: true });
+});
+
+// 获取未读通知数
+app.get('/api/notifications/unread', (req, res) => {
+  const { username } = req.query;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.json({ count: 0 });
+  
+  const count = db.notifications.filter(n => n.user_id === user.id && !n.read).length;
+  res.json({ count });
+});
+
+// 浏览历史
+app.get('/api/history', (req, res) => {
+  const { username } = req.query;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.json([]);
+  
+  const historyIds = db.history
+    .filter(h => h.user_id === user.id)
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, 20)
+    .map(h => h.product_id);
+  
+  const history = [...new Set(historyIds)].map(id => {
+    const p = db.products.find(prod => prod.id === id);
+    if (!p) return null;
+    return { ...p, like_count: db.likes.filter(l => l.product_id === p.id).length };
+  }).filter(p => p);
+  
+  res.json(history);
+});
+
+// 添加浏览历史
+app.post('/api/history', async (req, res) => {
+  const { username, product_id } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  // 删除旧的同产品记录
+  db.history = db.history.filter(h => !(h.user_id === user.id && h.product_id === product_id));
+  
+  db.history.push({ id: genId('history'), user_id: user.id, product_id, created_at: new Date().toISOString() });
+  
+  // 保持最多50条
+  const userHistory = db.history.filter(h => h.user_id === user.id);
+  if (userHistory.length > 50) {
+    const toDelete = userHistory.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)).slice(0, userHistory.length - 50);
+    toDelete.forEach(h => {
+      db.history = db.history.filter(hi => hi.id !== h.id);
+    });
+  }
+  
+  await saveDB();
+  res.json({ success: true });
+});
+
+// 用户列表（用于关注）
+app.get('/api/users', (req, res) => {
+  const { username } = req.query;
+  const users = db.users.map(u => ({
+    id: u.id,
+    username: u.username,
+    avatar: u.avatar,
+    bio: u.bio
+  }));
+  res.json(users);
 });
 
 module.exports = app;
