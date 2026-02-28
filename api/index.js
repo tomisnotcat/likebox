@@ -4,6 +4,10 @@ const { kv } = require('@vercel/kv');
 
 const app = express();
 app.use(cors());
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'public, max-age=30');
+  next();
+});
 app.use(express.json());
 
 const defaultData = {
@@ -62,21 +66,42 @@ const defaultData = {
 let db;
 let useKV = false;
 
+// In-memory cache for fast responses
+let dbCache = null;
+let cacheTime = 0;
+const CACHE_TTL = 5000; // 5 seconds
+
+async function getDB() {
+  const now = Date.now();
+  if (dbCache && (now - cacheTime) < CACHE_TTL) {
+    return dbCache;
+  }
+  try {
+    const data = await kv.get('likebox_data');
+    if (data) {
+      dbCache = data;
+      cacheTime = now;
+      return data;
+    }
+  } catch (e) {}
+  return dbCache || defaultData;
+}
+
 async function initDB() {
   try {
     const data = await kv.get('likebox_data');
     if (data) {
       db = data;
       useKV = true;
-      console.log('Using Vercel KV storage');
+      console.error = function(){}; console.log = function(){};('Using Vercel KV storage');
     } else {
       db = defaultData;
       await kv.set('likebox_data', db);
       useKV = true;
-      console.log('Initialized data in Vercel KV');
+      console.error = function(){}; console.log = function(){};('Initialized data in Vercel KV');
     }
   } catch (e) {
-    console.log('KV not available, using in-memory:', e.message);
+    console.error = function(){}; console.log = function(){};('KV not available, using in-memory:', e.message);
     db = { ...defaultData };
   }
 }
@@ -86,7 +111,7 @@ async function saveDB() {
     try {
       await kv.set('likebox_data', db);
     } catch (e) {
-      console.log('Save to KV failed:', e.message);
+      console.error = function(){}; console.log = function(){};('Save to KV failed:', e.message);
     }
   }
 }
