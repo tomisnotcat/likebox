@@ -674,4 +674,85 @@ app.get('/api/users', (req, res) => {
   res.json(users);
 });
 
+
+// Image upload (base64)
+app.post('/api/upload', async (req, res) => {
+  const { image, type } = req.body;
+  if (!image) return res.status(400).json({ error: 'No image provided' });
+  
+  // Simple base64 storage - in production use cloud storage
+  const filename = 'img_' + Date.now() + '.png';
+  const base64Data = image.replace(/^data:image/w+;base64,/, '');
+  const buffer = Buffer.from(base64Data, 'base64');
+  
+  // For Vercel, we'll return a data URL (or integrate with external service)
+  res.json({ url: image });
+});
+
+// Update user avatar
+app.put('/api/user/avatar', async (req, res) => {
+  const { username, avatar } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  
+  user.avatar = avatar;
+  await saveDB();
+  res.json({ success: true });
+});
+
+// Brand detail
+app.get('/api/brands/:id', (req, res) => {
+  const brand = db.brands.find(b => b.id === parseInt(req.params.id));
+  if (!brand) return res.status(404).json({ error: 'Brand not found' });
+  
+  const products = db.products.filter(p => {
+    const tagsLower = (p.tags || '').toLowerCase();
+    const nameLower = brand.name.toLowerCase();
+    if (nameLower === 'apple' && tagsLower.includes('苹果')) return true;
+    if (nameLower === 'sony' && tagsLower.includes('索尼')) return true;
+    if (nameLower === 'nintendo' && tagsLower.includes('任天堂')) return true;
+    if (nameLower === 'nike' && tagsLower.includes('nike')) return true;
+    if (nameLower === 'starbucks' && tagsLower.includes('星巴克')) return true;
+    if (nameLower === 'dyson' && tagsLower.includes('戴森')) return true;
+    if (nameLower === 'sk-ii' && tagsLower.includes('sk-ii')) return true;
+    if (nameLower === 'lululemon' && tagsLower.includes('lululemon')) return true;
+    return tagsLower.includes(nameLower);
+  }).map(p => ({
+    ...p,
+    like_count: db.likes.filter(l => l.product_id === p.id).length
+  }));
+  
+  res.json({ ...brand, products });
+});
+
+// Admin stats
+app.get('/api/admin/stats', (req, res) => {
+  const stats = {
+    total_users: db.users.length,
+    total_products: db.products.length,
+    total_likes: db.likes.length,
+    total_comments: db.comments.length,
+    total_favorites: db.favorites.length,
+    reports_count: db.reports.length,
+    top_products: db.products.map(p => ({
+      id: p.id,
+      name: p.name,
+      like_count: db.likes.filter(l => l.product_id === p.id).length
+    })).sort((a, b) => b.like_count - a.like_count).slice(0, 10),
+    recent_products: db.products.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 10)
+  };
+  res.json(stats);
+});
+
+// Reports list (admin)
+app.get('/api/admin/reports', (req, res) => {
+  const reports = db.reports.map(r => {
+    const product = db.products.find(p => p.id === r.product_id);
+    const user = db.users.find(u => u.id === r.user_id);
+    return { ...r, product_name: product?.name, username: user?.username };
+  });
+  res.json(reports);
+});
+
 module.exports = app;
+

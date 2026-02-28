@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LikeBox - 为喜欢的产品点赞</title>
+    <meta property="og:title" content="LikeBox - 产品点赞平台">
+    <meta property="og:description" content="发现并分享你喜欢的产品">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -14,48 +16,80 @@
             <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
                 <h1 class="text-xl font-bold text-indigo-600 cursor-pointer" @click="goHome"><i class="fas fa-heart"></i> LikeBox</h1>
                 <div class="flex items-center gap-3">
+                    <button @click="showCompare = true" class="text-gray-600 hover:text-indigo-600"><i class="fas fa-balance-scale"></i></button>
                     <button @click="showRanking = true; loadRanking()" class="text-gray-600 hover:text-indigo-600"><i class="fas fa-trophy"></i></button>
                     <button @click="showProductRanking = true; loadProductRanking()" class="text-gray-600 hover:text-indigo-600"><i class="fas fa-fire"></i></button>
+                    <button v-if="isAdmin" @click="showAdmin = true; loadAdminStats()" class="text-gray-600 hover:text-indigo-600"><i class="fas fa-cog"></i></button>
                     <template v-if="currentUser">
                         <button @click="showProfile = true; loadUserData()" class="text-gray-600 hover:text-indigo-600"><i class="fas fa-user"></i></button>
                         <span class="text-gray-600">{{ currentUser }}</span>
-                        <button @click="logout" class="text-sm text-gray-500 hover:text-gray-700">退出</button>
+                        <button @click="logout" class="text-sm text-gray-500">退出</button>
                     </template>
-                    <button v-else @click="showLogin = true" class="text-indigo-600 hover:text-indigo-800">登录</button>
+                    <button v-else @click="showLogin = true" class="text-indigo-600">登录</button>
                 </div>
             </div>
         </nav>
 
         <main class="max-w-6xl mx-auto px-4 py-6">
-            <div class="mb-6 flex flex-wrap gap-3 items-center">
+            <!-- Brand Banner -->
+            <div v-if="selectedBrand" class="mb-6 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl p-6 text-white">
+                <button @click="selectedBrand = null; brandId = null; loadProducts()" class="mb-2 text-white/80 hover:text-white"><i class="fas fa-arrow-left"></i> 返回</button>
+                <div class="flex items-center gap-4">
+                    <img v-if="selectedBrand.logo" :src="selectedBrand.logo" class="w-16 h-16 rounded-full bg-white p-1">
+                    <div>
+                        <h2 class="text-2xl font-bold">{{ selectedBrand.name }}</h2>
+                        <p class="text-white/80">{{ selectedBrand.description }}</p>
+                        <p class="text-sm mt-1">{{ selectedBrand.products?.length || 0 }} 个产品</p>
+                    </div>
+                </div>
+            </div>
+
+            <div v-else class="mb-6 flex flex-wrap gap-3 items-center">
                 <input v-model="search" @keyup.enter="loadProducts" type="text" placeholder="搜索产品..." class="px-4 py-2 border rounded-lg w-64">
-                <select v-model="brandId" @change="loadProducts" class="px-4 py-2 border rounded-lg">
+                
+                <select v-model="brandId" @change="loadBrandProducts" class="px-4 py-2 border rounded-lg">
                     <option :value="null">全部品牌</option>
                     <option v-for="brand in brands" :key="brand.id" :value="brand.id">{{ brand.name }}</option>
                 </select>
+                
                 <select v-model="categoryId" @change="loadProducts" class="px-4 py-2 border rounded-lg">
                     <option :value="null">全部分类</option>
                     <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
                 </select>
+                
                 <select v-model="sort" @change="loadProducts" class="px-4 py-2 border rounded-lg">
                     <option value="latest">最新</option>
                     <option value="popular">最热</option>
                 </select>
+                
                 <button @click="showAddProduct = true" class="ml-auto bg-indigo-600 text-white px-4 py-2 rounded-lg">添加产品</button>
             </div>
 
-            <div v-if="tags.length" class="mb-4 flex flex-wrap gap-2">
+            <div v-if="tags.length && !selectedBrand" class="mb-4 flex flex-wrap gap-2">
                 <span class="text-sm text-gray-500">热门标签:</span>
                 <button v-for="tag in tags" :key="tag.name" @click="searchTag(tag.name)" class="px-2 py-1 text-xs bg-gray-100 rounded-full">{{ tag.name }}</button>
             </div>
 
+            <!-- Compare Bar -->
+            <div v-if="compareList.length > 0" class="mb-4 bg-indigo-50 rounded-lg p-3 flex items-center gap-2 flex-wrap">
+                <span class="text-sm text-indigo-600">对比 ({{ compareList.length }}):</span>
+                <span v-for="p in compareList" :key="p.id" class="px-2 py-1 bg-white rounded text-sm flex items-center gap-1">
+                    {{ p.name }}
+                    <button @click="removeFromCompare(p)" class="text-red-500"><i class="fas fa-times"></i></button>
+                </span>
+                <button @click="compareList = []" class="text-sm text-gray-500">清空</button>
+            </div>
+
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div v-for="product in products" :key="product.id" class="bg-white rounded-xl shadow-sm overflow-hidden" @click="viewProduct(product)">
-                    <div v-if="product.image_url" class="h-48 bg-gray-200 relative">
+                    <div v-if="product.image_url" class="h-48 bg-gray-200 relative cursor-pointer" @click.stop="toggleCompare(product)">
                         <img :src="product.image_url" class="w-full h-full object-cover">
                         <button @click.stop="toggleFavorite(product)" class="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/80"><i class="fas fa-star" :class="product.is_favorited ? 'text-yellow-500' : 'text-gray-400'"></i></button>
+                        <span v-if="compareList.find(p => p.id === product.id)" class="absolute top-2 left-2 w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs"><i class="fas fa-check"></i></span>
                     </div>
-                    <div v-else class="h-48 bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center"><i class="fas fa-box text-4xl text-indigo-300"></i></div>
+                    <div v-else class="h-48 bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center relative cursor-pointer" @click.stop="toggleCompare(product)">
+                        <i class="fas fa-box text-4xl text-indigo-300"></i>
+                    </div>
                     <div class="p-4">
                         <h3 class="font-semibold text-lg truncate">{{ product.name }}</h3>
                         <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{ product.description }}</p>
@@ -70,6 +104,7 @@
             </div>
         </main>
 
+        <!-- Login -->
         <div v-if="showLogin" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showLogin = false">
             <div class="bg-white rounded-xl p-6 w-96">
                 <h2 class="text-xl font-bold mb-4">{{ isRegister ? '注册' : '登录' }}</h2>
@@ -80,12 +115,17 @@
             </div>
         </div>
 
+        <!-- Add Product -->
         <div v-if="showAddProduct" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showAddProduct = false">
-            <div class="bg-white rounded-xl p-6 w-full max-w-lg">
+            <div class="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
                 <h2 class="text-xl font-bold mb-4">添加产品</h2>
                 <input v-model="productForm.name" type="text" placeholder="产品名称 *" class="w-full px-4 py-2 border rounded-lg mb-3">
                 <textarea v-model="productForm.description" placeholder="产品描述 *" rows="3" class="w-full px-4 py-2 border rounded-lg mb-3"></textarea>
-                <input v-model="productForm.image_url" type="text" placeholder="图片URL" class="w-full px-4 py-2 border rounded-lg mb-3">
+                <div class="mb-3">
+                    <label class="block text-sm text-gray-500 mb-1">产品图片</label>
+                    <input type="file" @change="handleImageUpload" accept="image/*" class="w-full px-4 py-2 border rounded-lg">
+                    <img v-if="productForm.imagePreview" :src="productForm.imagePreview" class="mt-2 h-32 object-cover rounded">
+                </div>
                 <input v-model="productForm.product_url" type="text" placeholder="商品链接" class="w-full px-4 py-2 border rounded-lg mb-3">
                 <input v-model="productForm.tags" type="text" placeholder="标签（逗号分隔）" class="w-full px-4 py-2 border rounded-lg mb-3">
                 <select v-model="productForm.category_id" class="w-full px-4 py-2 border rounded-lg mb-4">
@@ -98,20 +138,32 @@
             </div>
         </div>
 
+        <!-- Product Detail -->
         <div v-if="selectedProduct" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="selectedProduct = null">
             <div class="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                 <div v-if="selectedProduct.image_url" class="h-64 bg-gray-200"><img :src="selectedProduct.image_url" class="w-full h-full object-cover"></div>
                 <div class="p-6">
                     <div class="flex items-start justify-between">
                         <div><h2 class="text-2xl font-bold">{{ selectedProduct.name }}</h2><p class="text-sm text-gray-500">{{ formatDate(selectedProduct.created_at) }}</p></div>
-                        <div class="flex items-center gap-2">
-                            <button @click="toggleLike(selectedProduct)" class="flex items-center gap-2 px-4 py-2 rounded-full" :class="selectedProduct.is_liked ? 'bg-red-100 text-red-600' : 'bg-gray-100'">
-                                <i class="fas fa-heart" :class="selectedProduct.is_liked ? 'fa-solid' : 'fa-regular'"></i> {{ selectedProduct.like_count }}
-                            </button>
-                        </div>
+                        <button @click="toggleLike(selectedProduct)" class="flex items-center gap-2 px-4 py-2 rounded-full" :class="selectedProduct.is_liked ? 'bg-red-100 text-red-600' : 'bg-gray-100'">
+                            <i class="fas fa-heart" :class="selectedProduct.is_liked ? 'fa-solid' : 'fa-regular'"></i> {{ selectedProduct.like_count }}
+                        </button>
                     </div>
                     <p class="mt-4">{{ selectedProduct.description }}</p>
+                    <div class="mt-3 flex gap-2">
+                        <span v-for="tag in (selectedProduct.tags || '').split(',').filter(t => t)" :key="tag" class="px-2 py-1 text-xs bg-gray-100 rounded">{{ tag }}</span>
+                    </div>
                     <a v-if="selectedProduct.product_url" :href="selectedProduct.product_url" target="_blank" class="mt-4 inline-flex items-center gap-2 text-indigo-600">查看商品 <i class="fas fa-external-link-alt"></i></a>
+                    
+                    <!-- Share Card -->
+                    <div class="mt-4 p-3 bg-gray-50 rounded-lg">
+                        <p class="text-sm text-gray-500 mb-2">分享</p>
+                        <div class="flex gap-2">
+                            <button @click="shareWeibo" class="px-3 py-1 bg-red-500 text-white rounded text-sm"><i class="fab fa-weibo"></i> 微博</button>
+                            <button @click="copyLink" class="px-3 py-1 bg-gray-200 rounded text-sm">复制链接</button>
+                        </div>
+                    </div>
+
                     <div class="mt-6 border-t pt-4">
                         <h3 class="font-semibold mb-3">评论 ({{ comments.length }})</h3>
                         <div v-if="currentUser" class="mb-4 flex gap-2">
@@ -132,6 +184,43 @@
             </div>
         </div>
 
+        <!-- Compare Modal -->
+        <div v-if="showCompare" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showCompare = false">
+            <div class="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[80vh] overflow-y-auto">
+                <div class="flex justify-between mb-4"><h2 class="text-xl font-bold">产品对比</h2><button @click="showCompare = false"><i class="fas fa-times"></i></button></div>
+                <div v-if="compareList.length < 2" class="text-center py-8 text-gray-500">请先添加至少2个产品进行对比</div>
+                <div v-else class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="text-left p-2">产品</th>
+                                <th v-for="p in compareList" :key="p.id" class="p-2">{{ p.name }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b">
+                                <td class="p-2 font-medium">图片</td>
+                                <td v-for="p in compareList" :key="p.id" class="p-2"><img v-if="p.image_url" :src="p.image_url" class="h-16 object-cover rounded"></td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="p-2 font-medium">描述</td>
+                                <td v-for="p in compareList" :key="p.id" class="p-2 text-xs">{{ p.description?.slice(0,50) }}...</td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="p-2 font-medium">点赞</td>
+                                <td v-for="p in compareList" :key="p.id" class="p-2"><i class="fas fa-heart text-red-500"></i> {{ p.like_count }}</td>
+                            </tr>
+                            <tr>
+                                <td class="p-2 font-medium">操作</td>
+                                <td v-for="p in compareList" :key="p.id" class="p-2"><button @click="viewProduct(p); showCompare = false" class="text-indigo-600 text-xs">查看详情</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ranking -->
         <div v-if="showRanking" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showRanking = false">
             <div class="bg-white rounded-xl p-6 w-full max-w-md">
                 <div class="flex justify-between mb-4"><h2 class="text-xl font-bold"><i class="fas fa-trophy text-yellow-500"></i> 排行榜</h2><button @click="showRanking = false"><i class="fas fa-times"></i></button></div>
@@ -145,6 +234,7 @@
             </div>
         </div>
 
+        <!-- Product Ranking -->
         <div v-if="showProductRanking" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showProductRanking = false">
             <div class="bg-white rounded-xl p-6 w-full max-w-lg">
                 <div class="flex justify-between mb-4"><h2 class="text-xl font-bold"><i class="fas fa-fire text-red-500"></i> 热门</h2><button @click="showProductRanking = false"><i class="fas fa-times"></i></button></div>
@@ -162,24 +252,73 @@
             </div>
         </div>
 
+        <!-- Profile -->
         <div v-if="showProfile" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showProfile = false">
             <div class="bg-white rounded-xl p-6 w-full max-w-md">
                 <div class="flex justify-between mb-4"><h2 class="text-xl font-bold"><i class="fas fa-user text-indigo-600"></i> 个人主页</h2><button @click="showProfile = false"><i class="fas fa-times"></i></button></div>
-                <div class="flex gap-2 mb-4">
-                    <button @click="profileTab = 'products'" class="px-4 py-2 rounded-lg" :class="profileTab === 'products' ? 'bg-indigo-600 text-white' : 'bg-gray-100'">我的产品</button>
-                    <button @click="profileTab = 'favorites'" class="px-4 py-2 rounded-lg" :class="profileTab === 'favorites' ? 'bg-indigo-600 text-white' : 'bg-gray-100'">收藏</button>
+                <div class="text-center mb-4">
+                    <label class="cursor-pointer">
+                        <div class="w-20 h-20 rounded-full bg-indigo-100 flex items-center justify-center text-3xl mx-auto mb-2">{{ currentUser?.charAt(0).toUpperCase() }}</div>
+                        <input type="file" @change="handleAvatarUpload" accept="image/*" class="hidden">
+                        <span class="text-xs text-indigo-600">更换头像</span>
+                    </label>
                 </div>
-                <div v-if="profileTab === 'products'" class="space-y-3">
-                    <div v-for="product in myProducts" :key="product.id" class="flex items-center gap-3 p-3 rounded-lg bg-gray-50" @click="viewProduct(product); showProfile = false">
-                        <div class="w-12 h-12 rounded-lg bg-gray-200"><img v-if="product.image_url" :src="product.image_url" class="w-full h-full object-cover rounded-lg"></div>
-                        <div class="flex-1"><div class="font-medium">{{ product.name }}</div><div class="text-xs text-gray-500">{{ product.like_count }} 赞</div></div>
+                <div class="flex gap-2 mb-4">
+                    <button @click="profileTab = 'products'" class="flex-1 px-4 py-2 rounded-lg" :class="profileTab === 'products' ? 'bg-indigo-600 text-white' : 'bg-gray-100'">我的产品</button>
+                    <button @click="profileTab = 'favorites'" class="flex-1 px-4 py-2 rounded-lg" :class="profileTab === 'favorites' ? 'bg-indigo-600 text-white' : 'bg-gray-100'">收藏</button>
+                </div>
+                <div v-if="profileTab === 'products'" class="space-y-3 max-h-60 overflow-y-auto">
+                    <div v-for="product in myProducts" :key="product.id" class="flex items-center gap-3 p-2 bg-gray-50 rounded" @click="viewProduct(product); showProfile = false">
+                        <div class="w-10 h-10 rounded bg-gray-200"><img v-if="product.image_url" :src="product.image_url" class="w-full h-full object-cover rounded"></div>
+                        <div class="flex-1 text-sm">{{ product.name }}</div>
                     </div>
                 </div>
-                <div v-if="profileTab === 'favorites'" class="space-y-3">
-                    <div v-for="product in myFavorites" :key="product.id" class="flex items-center gap-3 p-3 rounded-lg bg-gray-50" @click="viewProduct(product); showProfile = false">
-                        <div class="w-12 h-12 rounded-lg bg-gray-200"><img v-if="product.image_url" :src="product.image_url" class="w-full h-full object-cover rounded-lg"></div>
-                        <div class="flex-1"><div class="font-medium">{{ product.name }}</div><div class="text-xs text-gray-500">{{ product.like_count }} 赞</div></div>
+                <div v-if="profileTab === 'favorites'" class="space-y-3 max-h-60 overflow-y-auto">
+                    <div v-for="product in myFavorites" :key="product.id" class="flex items-center gap-3 p-2 bg-gray-50 rounded" @click="viewProduct(product); showProfile = false">
+                        <div class="w-10 h-10 rounded bg-gray-200"><img v-if="product.image_url" :src="product.image_url" class="w-full h-full object-cover rounded"></div>
+                        <div class="flex-1 text-sm">{{ product.name }}</div>
                         <i class="fas fa-star text-yellow-500"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin -->
+        <div v-if="showAdmin" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showAdmin = false">
+            <div class="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+                <div class="flex justify-between mb-4"><h2 class="text-xl font-bold"><i class="fas fa-cog text-indigo-600"></i> 管理面板</h2><button @click="showAdmin = false"><i class="fas fa-times"></i></button></div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-indigo-50 p-4 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-indigo-600">{{ adminStats.total_users }}</div>
+                        <div class="text-sm text-gray-500">用户</div>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-green-600">{{ adminStats.total_products }}</div>
+                        <div class="text-sm text-gray-500">产品</div>
+                    </div>
+                    <div class="bg-red-50 p-4 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-red-600">{{ adminStats.total_likes }}</div>
+                        <div class="text-sm text-gray-500">点赞</div>
+                    </div>
+                    <div class="bg-yellow-50 p-4 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-yellow-600">{{ adminStats.total_comments }}</div>
+                        <div class="text-sm text-gray-500">评论</div>
+                    </div>
+                </div>
+                <h3 class="font-semibold mb-2">热门产品</h3>
+                <div class="space-y-2 mb-4">
+                    <div v-for="p in adminStats.top_products" :key="p.id" class="flex items-center gap-2 text-sm">
+                        <span class="w-6">{{ p.id }}</span>
+                        <span class="flex-1">{{ p.name }}</span>
+                        <span class="text-red-500">{{ p.like_count }} 赞</span>
+                    </div>
+                </div>
+                <h3 class="font-semibold mb-2">最新产品</h3>
+                <div class="space-y-2">
+                    <div v-for="p in adminStats.recent_products" :key="p.id" class="flex items-center gap-2 text-sm">
+                        <span class="w-6">{{ p.id }}</span>
+                        <span class="flex-1">{{ p.name }}</span>
+                        <span class="text-gray-400">{{ formatDate(p.created_at) }}</span>
                     </div>
                 </div>
             </div>
@@ -192,27 +331,25 @@
             data() {
                 return {
                     currentUser: localStorage.getItem('username') || null,
-                    currentUserId: null,
-                    isAdmin: false,
-                    products: [], categories: [], brands: [], brandId: null, comments: [], tags: [],
-                    selectedProduct: null,
-                    showLogin: false, showAddProduct: false, showRanking: false, showProductRanking: false, showProfile: false,
+                    currentUserId: null, isAdmin: false,
+                    products: [], categories: [], brands: [], tags: [],
+                    comments: [],
+                    selectedProduct: null, selectedBrand: null,
+                    showLogin: false, showAddProduct: false, showRanking: false, showProductRanking: false, showProfile: false, showAdmin: false, showCompare: false,
                     ranking: [], productRanking: [], myProducts: [], myFavorites: [],
+                    adminStats: {},
                     profileTab: 'products', rankingCategoryId: null, isRegister: false,
-                    search: '', categoryId: null, sort: 'latest',
+                    search: '', brandId: null, categoryId: null, sort: 'latest',
                     authForm: { username: '', password: '' },
-                    productForm: { name: '', description: '', image_url: '', product_url: '', tags: '', category_id: 1 },
-                    newComment: ''
+                    productForm: { name: '', description: '', image_url: '', product_url: '', tags: '', category_id: 1, imagePreview: '' },
+                    newComment: '', compareList: []
                 }
             },
             mounted() {
-                this.loadCategories();
-                this.loadProducts();
-                this.loadTags(); this.loadBrands();
-                this.checkUser();
+                this.loadCategories(); this.loadProducts(); this.loadTags(); this.loadBrands(); this.checkUser();
                 const urlParams = new URLSearchParams(window.location.search);
-                const productId = urlParams.get('product');
-                if (productId) this.loadProductById(productId);
+                if (urlParams.get('product')) this.loadProductById(urlParams.get('product'));
+                if (urlParams.get('brand')) this.loadBrand(parseInt(urlParams.get('brand')));
             },
             methods: {
                 async checkUser() {
@@ -221,7 +358,7 @@
                     const user = await res.json();
                     if (user) { this.currentUserId = user.id; this.isAdmin = user.is_admin; }
                 },
-                goHome() { this.selectedProduct = null; this.categoryId = null; this.search = ''; this.loadProducts(); window.history.pushState({}, '', '/'); },
+                goHome() { this.selectedBrand = null; this.brandId = null; this.selectedProduct = null; this.categoryId = null; this.search = ''; this.loadProducts(); window.history.pushState({}, '', '/'); },
                 async loadCategories() { this.categories = await (await fetch('/api/categories')).json(); },
                 async loadTags() { this.tags = await (await fetch('/api/tags')).json(); },
                 async loadBrands() { this.brands = await (await fetch('/api/brands')).json(); },
@@ -234,10 +371,20 @@
                     if (this.currentUser) params.append('username', this.currentUser);
                     this.products = await (await fetch('/api/products?' + params)).json();
                 },
+                loadBrandProducts() {
+                    if (this.brandId) {
+                        fetch('/api/brands/' + this.brandId).then(r => r.json()).then(b => { this.selectedBrand = b; this.products = b.products || []; });
+                    } else { this.selectedBrand = null; this.loadProducts(); }
+                },
+                async loadBrand(id) {
+                    const brand = await (await fetch('/api/brands/' + id)).json();
+                    this.selectedBrand = brand;
+                    this.products = brand.products || [];
+                    window.history.pushState({}, '', '?brand=' + id);
+                },
                 searchTag(tag) { this.search = tag; this.loadProducts(); },
                 async loadProductById(id) {
-                    const username = this.currentUser || '';
-                    const res = await fetch('/api/products/' + id + '?username=' + username);
+                    const res = await fetch('/api/products/' + id + '?username=' + (this.currentUser || ''));
                     if (res.ok) { this.selectedProduct = await res.json(); this.loadComments(this.selectedProduct.id); }
                 },
                 async loadRanking() { this.ranking = await (await fetch('/api/ranking')).json(); },
@@ -251,6 +398,7 @@
                     this.myProducts = await (await fetch('/api/user/products?username=' + this.currentUser)).json();
                     this.myFavorites = await (await fetch('/api/user/favorites?username=' + this.currentUser)).json();
                 },
+                async loadAdminStats() { this.adminStats = await (await fetch('/api/admin/stats')).json(); },
                 async auth() {
                     const endpoint = this.isRegister ? '/api/register' : '/api/login';
                     const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.authForm) });
@@ -261,40 +409,66 @@
                     this.showLogin = false; this.authForm = { username: '', password: '' }; this.loadProducts();
                 },
                 logout() { this.currentUser = null; localStorage.removeItem('username'); this.loadProducts(); },
+                handleImageUpload(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => { this.productForm.imagePreview = e.target.result; this.productForm.image_url = e.target.result; };
+                        reader.readAsDataURL(file);
+                    }
+                },
+                handleAvatarUpload(e) {
+                    const file = e.target.files[0];
+                    if (file && this.currentUser) {
+                        const reader = new FileReader();
+                        reader.onload = async (e) => {
+                            await fetch('/api/user/avatar', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: this.currentUser, avatar: e.target.result }) });
+                            alert('头像已更新');
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                },
                 async addProduct() {
                     if (!this.currentUser) { alert('请先登录'); return; }
                     const res = await fetch('/api/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...this.productForm, username: this.currentUser }) });
-                    if (res.ok) { this.showAddProduct = false; this.productForm = { name: '', description: '', image_url: '', product_url: '', tags: '', category_id: 1 }; this.loadProducts(); this.loadTags(); }
+                    if (res.ok) { this.showAddProduct = false; this.productForm = { name: '', description: '', image_url: '', product_url: '', tags: '', category_id: 1, imagePreview: '' }; this.loadProducts(); this.loadTags(); }
                 },
-                async viewProduct(product) {
-                    this.selectedProduct = { ...product };
-                    await this.loadComments(product.id);
-                    window.history.pushState({}, '', '?product=' + product.id);
-                    if (this.currentUser) fetch('/api/history', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: this.currentUser, product_id: product.id }) });
-                },
+                async viewProduct(product) { this.selectedProduct = { ...product }; await this.loadComments(product.id); window.history.pushState({}, '', '?product=' + product.id); },
                 async loadComments(productId) { this.comments = await (await fetch('/api/products/' + productId + '/comments?username=' + (this.currentUser || ''))).json(); },
                 async toggleLike(product) {
                     if (!this.currentUser) { this.showLogin = true; return; }
                     const res = await fetch('/api/products/' + product.id + '/like', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: this.currentUser }) });
-                    const data = await res.json();
-                    product.like_count = data.count; product.is_liked = data.liked;
+                    const data = await res.json(); product.like_count = data.count; product.is_liked = data.liked;
                     if (this.selectedProduct && this.selectedProduct.id === product.id) { this.selectedProduct.like_count = data.count; this.selectedProduct.is_liked = data.liked; }
                 },
                 async toggleFavorite(product) {
                     if (!this.currentUser) { this.showLogin = true; return; }
                     const res = await fetch('/api/products/' + product.id + '/favorite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: this.currentUser }) });
-                    const data = await res.json();
-                    product.is_favorited = data.favorited;
+                    const data = await res.json(); product.is_favorited = data.favorited;
                     if (this.selectedProduct && this.selectedProduct.id === product.id) this.selectedProduct.is_favorited = data.favorited;
                 },
+                toggleCompare(product) {
+                    const idx = this.compareList.findIndex(p => p.id === product.id);
+                    if (idx >= 0) this.compareList.splice(idx, 1);
+                    else if (this.compareList.length < 4) this.compareList.push(product);
+                },
+                removeFromCompare(p) { this.compareList = this.compareList.filter(x => x.id !== p.id); },
                 async submitComment() {
                     if (!this.newComment.trim()) return;
                     await fetch('/api/comments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product_id: this.selectedProduct.id, content: this.newComment, username: this.currentUser }) });
                     this.newComment = ''; this.loadComments(this.selectedProduct.id);
                 },
-                formatDate(dateStr) { return new Date(dateStr).toLocaleDateString('zh-CN'); }
+                shareWeibo() {
+                    const url = encodeURIComponent(window.location.origin + '?product=' + this.selectedProduct.id);
+                    const title = encodeURIComponent(this.selectedProduct.name);
+                    window.open('http://service.weibo.com/share/share.php?url=' + url + '&title=' + title, '_blank');
+                },
+                copyLink() {
+                    navigator.clipboard.writeText(window.location.origin + '?product=' + this.selectedProduct.id);
+                    alert('链接已复制');
+                },
+                formatDate(d) { return new Date(d).toLocaleDateString('zh-CN'); }
             }
         }).mount('#app');
     </script>
 </body>
-</html>
