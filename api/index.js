@@ -682,7 +682,7 @@ app.post('/api/upload', async (req, res) => {
   
   // Simple base64 storage - in production use cloud storage
   const filename = 'img_' + Date.now() + '.png';
-  const base64Data = image.replace(/^data:image/w+;base64,/, '');
+  const base64Data = image.replace(/^data:image\/[^;]+;base64,/, '');
   const buffer = Buffer.from(base64Data, 'base64');
   
   // For Vercel, we'll return a data URL (or integrate with external service)
