@@ -81,6 +81,7 @@ const users = generateUsers();
 const likes = [];
 const comments = [];
 const favorites = [];
+const follows = []; // 用户关注关系
 
 users.forEach((user) => {
   if (user.is_admin) return;
@@ -108,119 +109,475 @@ const defaultData = {
 
 let db = { ...defaultData };
 
-app.get('/api/products', (req, res) => {
-  let result = db.products.map(p => ({ ...p, like_count: db.likes.filter(l => l.product_id === p.id).length, comment_count: db.comments.filter(c => c.product_id === p.id).length }));
-  if (req.query.search) { const s = req.query.search.toLowerCase(); result = result.filter(p => p.name.toLowerCase().includes(s)); }
-  if (req.query.category_id) result = result.filter(p => p.category_id === parseInt(req.query.category_id));
-  res.json(result.slice(0, parseInt(req.query.limit) || 50));
+app.get('/api/products', (req, res, next) => {
+  try {
+    let result = db.products.map(p => ({ ...p, like_count: db.likes.filter(l => l.product_id === p.id).length, comment_count: db.comments.filter(c => c.product_id === p.id).length }));
+    if (req.query.search) { 
+      const s = req.query.search.toLowerCase(); 
+      result = result.filter(p => p.name.toLowerCase().includes(s) || p.tags?.toLowerCase().includes(s)); 
+    }
+    if (req.query.category_id) result = result.filter(p => p.category_id === parseInt(req.query.category_id));
+    if (req.query.min_price) result = result.filter(p => (p.price || 0) >= parseFloat(req.query.min_price));
+    if (req.query.max_price) result = result.filter(p => (p.price || 0) <= parseFloat(req.query.max_price));
+    res.json(result.slice(0, parseInt(req.query.limit) || 50));
+  } catch (err) {
+    next(err);
+  }
 });
 
-app.get('/api/products/:id', (req, res) => {
-  const product = db.products.find(p => p.id === parseInt(req.params.id));
-  if (!product) return res.status(404).json({ error: '产品不存在' });
-  const productComments = db.comments.filter(c => c.product_id === product.id).map(c => { const user = db.users.find(u => u.id === c.user_id); return { ...c, username: user?.username }; });
-  res.json({ ...product, like_count: db.likes.filter(l => l.product_id === product.id).length, comments: productComments });
+app.get('/api/products/:id', (req, res, next) => {
+  try {
+    const product = db.products.find(p => p.id === parseInt(req.params.id));
+    if (!product) return res.status(404).json({ error: '产品不存在' });
+    const productComments = db.comments.filter(c => c.product_id === product.id).map(c => { const user = db.users.find(u => u.id === c.user_id); return { ...c, username: user?.username }; });
+    res.json({ ...product, like_count: db.likes.filter(l => l.product_id === product.id).length, comments: productComments });
+  } catch (err) {
+    next(err);
+  }
 });
 
-app.post('/api/products/:id/like', (req, res) => {
-  const user = db.users.find(u => u.username === req.body.username);
-  if (!user) return res.status(401).json({ error: '请先登录' });
-  const pid = parseInt(req.params.id);
-  const existing = db.likes.find(l => l.user_id === user.id && l.product_id === pid);
-  if (existing) { db.likes = db.likes.filter(l => l !== existing); res.json({ liked: false }); }
-  else { db.likes.push({ id: db.likes.length + 1, user_id: user.id, product_id: pid, created_at: new Date().toISOString() }); res.json({ liked: true }); }
+app.post('/api/products/:id/like', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.body.username);
+    if (!user) return res.status(401).json({ error: '请先登录' });
+    const pid = parseInt(req.params.id);
+    const existing = db.likes.find(l => l.user_id === user.id && l.product_id === pid);
+    if (existing) { db.likes = db.likes.filter(l => l !== existing); res.json({ liked: false }); }
+    else { db.likes.push({ id: db.likes.length + 1, user_id: user.id, product_id: pid, created_at: new Date().toISOString() }); res.json({ liked: true }); }
+  } catch (err) {
+    next(err);
+  }
 });
 
-app.get('/api/favorites', (req, res) => {
-  const user = db.users.find(u => u.username === req.query.username);
-  if (!user) return res.json([]);
-  res.json(db.favorites.filter(f => f.user_id === user.id).map(f => db.products.find(p => p.id === f.product_id)).filter(p => p));
+app.get('/api/favorites', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.query.username);
+    if (!user) return res.json([]);
+    res.json(db.favorites.filter(f => f.user_id === user.id).map(f => db.products.find(p => p.id === f.product_id)).filter(p => p));
+  } catch (err) {
+    next(err);
+  }
 });
 
-app.post('/api/favorites', (req, res) => {
-  const user = db.users.find(u => u.username === req.body.username);
-  if (!user) return res.status(401).json({ error: '请先登录' });
-  const pid = parseInt(req.body.product_id);
-  const existing = db.favorites.find(f => f.user_id === user.id && f.product_id === pid);
-  if (existing) { db.favorites = db.favorites.filter(f => f !== existing); res.json({ favorited: false }); }
-  else { db.favorites.push({ id: db.favorites.length + 1, user_id: user.id, product_id: pid, created_at: new Date().toISOString() }); res.json({ favorited: true }); }
+app.post('/api/favorites', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.body.username);
+    if (!user) return res.status(401).json({ error: '请先登录' });
+    const pid = parseInt(req.body.product_id);
+    const existing = db.favorites.find(f => f.user_id === user.id && f.product_id === pid);
+    if (existing) { db.favorites = db.favorites.filter(f => f !== existing); res.json({ favorited: false }); }
+    else { db.favorites.push({ id: db.favorites.length + 1, user_id: user.id, product_id: pid, created_at: new Date().toISOString() }); res.json({ favorited: true }); }
+  } catch (err) {
+    next(err);
+  }
 });
 
-app.get('/api/products/:id/comments', (req, res) => res.json(db.comments.filter(c => c.product_id === parseInt(req.params.id)).map(c => { const user = db.users.find(u => u.id === c.user_id); return { ...c, username: user?.username }; })));
-
-app.post('/api/comments', (req, res) => {
-  const user = db.users.find(u => u.username === req.body.username);
-  if (!user) return res.status(401).json({ error: '请先登录' });
-  const comment = { id: db.comments.length + 1, user_id: user.id, product_id: parseInt(req.body.product_id), content: req.body.content, created_at: new Date().toISOString() };
-  db.comments.push(comment);
-  res.json({ ...comment, username: user.username });
+app.get('/api/products/:id/comments', (req, res, next) => {
+  try {
+    res.json(db.comments.filter(c => c.product_id === parseInt(req.params.id)).map(c => { const user = db.users.find(u => u.id === c.user_id); return { ...c, username: user?.username }; }));
+  } catch (err) {
+    next(err);
+  }
 });
 
-app.post('/api/register', (req, res) => {
-  if (db.users.find(u => u.username === req.body.username)) return res.status(400).json({ error: '用户名已存在' });
-  const user = { id: db.users.length + 1, username: req.body.username, password: req.body.password, is_admin: false, avatar: '', bio: '', created_at: new Date().toISOString() };
-  db.users.push(user);
-  res.json({ success: true, username: user.username });
+app.post('/api/comments', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.body.username);
+    if (!user) return res.status(401).json({ error: '请先登录' });
+    const comment = { id: db.comments.length + 1, user_id: user.id, product_id: parseInt(req.body.product_id), content: req.body.content, created_at: new Date().toISOString() };
+    db.comments.push(comment);
+    res.json({ ...comment, username: user.username });
+  } catch (err) {
+    next(err);
+  }
 });
 
-app.post('/api/login', (req, res) => {
-  const user = db.users.find(u => u.username === req.body.username && u.password === req.body.password);
-  if (!user) return res.status(401).json({ error: '用户名或密码错误' });
-  res.json({ username: user.username, is_admin: user.is_admin, avatar: user.avatar });
+app.post('/api/register', (req, res, next) => {
+  try {
+    if (db.users.find(u => u.username === req.body.username)) return res.status(400).json({ error: '用户名已存在' });
+    if (!req.body.username || !req.body.password) return res.status(400).json({ error: '用户名和密码不能为空' });
+    const user = { id: db.users.length + 1, username: req.body.username, password: req.body.password, is_admin: false, avatar: '', bio: '', created_at: new Date().toISOString() };
+    db.users.push(user);
+    res.json({ success: true, username: user.username });
+  } catch (err) {
+    next(err);
+  }
 });
 
-app.get('/api/categories', (req, res) => res.json(categories));
-app.get('/api/brands', (req, res) => res.json([]));
-
-app.get('/api/categories/:id', (req, res) => {
-  const cid = parseInt(req.params.id);
-  const products = db.products.filter(p => p.category_id === cid).map(p => ({ ...p, like_count: db.likes.filter(l => l.product_id === p.id).length }));
-  res.json({ id: cid, products });
+app.post('/api/login', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.body.username && u.password === req.body.password);
+    if (!user) return res.status(401).json({ error: '用户名或密码错误' });
+    res.json({ username: user.username, is_admin: user.is_admin, avatar: user.avatar });
+  } catch (err) {
+    next(err);
+  }
 });
 
-app.get('/api/weekly', (req, res) => res.json(db.products.slice(0, 6)));
-
-app.get('/api/leaderboard', (req, res) => {
-  const lb = db.users.filter(u => !u.is_admin).map(u => ({ username: u.username, score: db.likes.filter(l => l.user_id === u.id).length + db.comments.filter(c => c.user_id === u.id).length * 2 })).sort((a, b) => b.score - a.score).slice(0, 20);
-  res.json(lb);
+app.get('/api/categories', (req, res, next) => {
+  try {
+    res.json(categories);
+  } catch (err) {
+    next(err);
+  }
+});
+app.get('/api/brands', (req, res, next) => {
+  try {
+    res.json([]);
+  } catch (err) {
+    next(err);
+  }
 });
 
-app.get('/api/ranking', (req, res) => res.json(db.products.map(p => ({ ...p, like_count: db.likes.filter(l => l.product_id === p.id).length })).sort((a, b) => b.like_count - a.like_count)));
-
-app.get('/api/user/:username', (req, res) => {
-  const user = db.users.find(u => u.username === req.params.username);
-  if (!user) return res.status(404).json({ error: '用户不存在' });
-  res.json({ id: user.id, username: user.username, avatar: user.avatar, bio: user.bio, is_admin: user.is_admin, points: user.points, checkin_days: user.checkin_days });
+app.get('/api/categories/:id', (req, res, next) => {
+  try {
+    const cid = parseInt(req.params.id);
+    const products = db.products.filter(p => p.category_id === cid).map(p => ({ ...p, like_count: db.likes.filter(l => l.product_id === p.id).length }));
+    res.json({ id: cid, products });
+  } catch (err) {
+    next(err);
+  }
 });
 
-app.post('/api/checkin', (req, res) => {
-  const user = db.users.find(u => u.username === req.body.username);
-  if (!user) return res.status(401).json({ error: '请先登录' });
-  if (user.last_checkin === new Date().toDateString()) return res.json({ success: false, message: '今日已签到' });
-  user.points = (user.points || 0) + 10;
-  user.last_checkin = new Date().toDateString();
-  user.checkin_days = (user.checkin_days || 0) + 1;
-  res.json({ success: true, points: 10, total: user.points, days: user.checkin_days });
+app.get('/api/weekly', (req, res, next) => {
+  try {
+    res.json(db.products.slice(0, 6));
+  } catch (err) {
+    next(err);
+  }
 });
 
-app.get('/api/checkin', (req, res) => {
-  const user = db.users.find(u => u.username === req.query.username);
-  if (!user) return res.json({ checked: false, days: 0 });
-  res.json({ checked: user.last_checkin === new Date().toDateString(), days: user.checkin_days || 0 });
+app.get('/api/leaderboard', (req, res, next) => {
+  try {
+    const lb = db.users.filter(u => !u.is_admin).map(u => ({ username: u.username, score: db.likes.filter(l => l.user_id === u.id).length + db.comments.filter(c => c.user_id === u.id).length * 2 })).sort((a, b) => b.score - a.score).slice(0, 20);
+    res.json(lb);
+  } catch (err) {
+    next(err);
+  }
 });
 
-app.get('/api/points', (req, res) => {
-  const user = db.users.find(u => u.username === req.query.username);
-  if (!user) return res.json({ points: 0, level: 1 });
-  res.json({ points: user.points || 0, level: Math.floor((user.points || 0) / 100) + 1 });
+app.get('/api/ranking', (req, res, next) => {
+  try {
+    res.json(db.products.map(p => ({ ...p, like_count: db.likes.filter(l => l.product_id === p.id).length })).sort((a, b) => b.like_count - a.like_count));
+  } catch (err) {
+    next(err);
+  }
 });
 
-app.get('/api/compare', (req, res) => {
-  if (!req.query.ids) return res.json([]);
-  const ids = req.query.ids.split(',').map(id => parseInt(id));
-  res.json(ids.map(id => db.products.find(p => p.id === id)).filter(p => p));
+app.get('/api/user/:username', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.params.username);
+    if (!user) return res.status(404).json({ error: '用户不存在' });
+    res.json({ id: user.id, username: user.username, avatar: user.avatar, bio: user.bio, is_admin: user.is_admin, points: user.points, checkin_days: user.checkin_days });
+  } catch (err) {
+    next(err);
+  }
 });
 
-app.get('/api/admin/stats', (req, res) => res.json({ total_users: db.users.length, total_products: db.products.length, total_likes: db.likes.length, total_comments: db.comments.length }));
+app.post('/api/checkin', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.body.username);
+    if (!user) return res.status(401).json({ error: '请先登录' });
+    if (user.last_checkin === new Date().toDateString()) return res.json({ success: false, message: '今日已签到' });
+    user.points = (user.points || 0) + 10;
+    user.last_checkin = new Date().toDateString();
+    user.checkin_days = (user.checkin_days || 0) + 1;
+    res.json({ success: true, points: 10, total: user.points, days: user.checkin_days });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get('/api/checkin', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.query.username);
+    if (!user) return res.json({ checked: false, days: 0 });
+    res.json({ checked: user.last_checkin === new Date().toDateString(), days: user.checkin_days || 0 });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get('/api/points', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.query.username);
+    if (!user) return res.json({ points: 0, level: 1 });
+    res.json({ points: user.points || 0, level: Math.floor((user.points || 0) / 100) + 1 });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get('/api/compare', (req, res, next) => {
+  try {
+    if (!req.query.ids) return res.json([]);
+    const ids = req.query.ids.split(',').map(id => parseInt(id));
+    res.json(ids.map(id => db.products.find(p => p.id === id)).filter(p => p));
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get('/api/admin/stats', (req, res, next) => {
+  try {
+    res.json({ total_users: db.users.length, total_products: db.products.length, total_likes: db.likes.length, total_comments: db.comments.length });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ==================== 错误处理中间件 ====================
+app.use((err, req, res, next) => {
+  console.error('API Error:', err);
+  res.status(500).json({ error: '服务器内部错误', message: err.message });
+});
+
+// 404 处理
+app.use((req, res) => {
+  res.status(404).json({ error: 'API路由不存在' });
+});
+
+// ==================== 用户关注功能 ====================
+
+// 关注用户
+app.post('/api/follow', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.body.username);
+    if (!user) return res.status(401).json({ error: '请先登录' });
+    
+    const targetUser = db.users.find(u => u.username === req.body.target_username);
+    if (!targetUser) return res.status(404).json({ error: '目标用户不存在' });
+    if (user.id === targetUser.id) return res.status(400).json({ error: '不能关注自己' });
+    
+    const existing = db.follows?.find(f => f.follower_id === user.id && f.following_id === targetUser.id);
+    if (!db.follows) db.follows = [];
+    
+    if (existing) {
+      db.follows = db.follows.filter(f => f !== existing);
+      res.json({ success: true, following: false, message: '已取消关注' });
+    } else {
+      db.follows.push({ id: db.follows.length + 1, follower_id: user.id, following_id: targetUser.id, created_at: new Date().toISOString() });
+      res.json({ success: true, following: true, message: '关注成功' });
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 获取关注列表
+app.get('/api/following/:username', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.params.username);
+    if (!user) return res.status(404).json({ error: '用户不存在' });
+    
+    if (!db.follows) db.follows = [];
+    const followingIds = db.follows.filter(f => f.follower_id === user.id).map(f => f.following_id);
+    const followingUsers = followingIds.map(id => db.users.find(u => u.id === id)).filter(u => u);
+    
+    res.json(followingUsers.map(u => ({ id: u.id, username: u.username, avatar: u.avatar, bio: u.bio })));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 获取粉丝列表
+app.get('/api/followers/:username', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.params.username);
+    if (!user) return res.status(404).json({ error: '用户不存在' });
+    
+    if (!db.follows) db.follows = [];
+    const followerIds = db.follows.filter(f => f.following_id === user.id).map(f => f.follower_id);
+    const followerUsers = followerIds.map(id => db.users.find(u => u.id === id)).filter(u => u);
+    
+    res.json(followerUsers.map(u => ({ id: u.id, username: u.username, avatar: u.avatar, bio: u.bio })));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 检查关注状态
+app.get('/api/follow/status', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.query.username);
+    const targetUser = db.users.find(u => u.username === req.query.target_username);
+    if (!user || !targetUser) return res.status(404).json({ error: '用户不存在' });
+    
+    if (!db.follows) db.follows = [];
+    const isFollowing = db.follows.some(f => f.follower_id === user.id && f.following_id === targetUser.id);
+    
+    res.json({ following: isFollowing });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 获取用户关注数量
+app.get('/api/follow/count/:username', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.params.username);
+    if (!user) return res.status(404).json({ error: '用户不存在' });
+    
+    if (!db.follows) db.follows = [];
+    const followingCount = db.follows.filter(f => f.follower_id === user.id).length;
+    const followerCount = db.follows.filter(f => f.following_id === user.id).length;
+    
+    res.json({ following: followingCount, followers: followerCount });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ==================== 产品搜索优化 ====================
+
+// 增强的产品搜索 - 支持更多筛选条件
+app.get('/api/products/search', (req, res, next) => {
+  try {
+    let { q, category_id, min_price, max_price, sort, page, limit } = req.query;
+    let result = [...db.products];
+    
+    // 关键字搜索 - 支持中英文和拼音模糊匹配
+    if (q) {
+      const searchTerm = q.toLowerCase().trim();
+      result = result.filter(p => {
+        const nameMatch = p.name.toLowerCase().includes(searchTerm);
+        const descMatch = p.description?.toLowerCase().includes(searchTerm);
+        const tagMatch = p.tags?.toLowerCase().includes(searchTerm);
+        const categoryMatch = p.category_id === parseInt(searchTerm);
+        return nameMatch || descMatch || tagMatch || categoryMatch;
+      });
+    }
+    
+    // 分类筛选
+    if (category_id) {
+      result = result.filter(p => p.category_id === parseInt(category_id));
+    }
+    
+    // 价格区间筛选
+    if (min_price) {
+      result = result.filter(p => p.price >= parseFloat(min_price));
+    }
+    if (max_price) {
+      result = result.filter(p => p.price <= parseFloat(max_price));
+    }
+    
+    // 排序
+    const sortKey = sort || 'default';
+    switch (sortKey) {
+      case 'price_asc':
+        result.sort((a, b) => (a.price || 0) - (b.price || 0));
+        break;
+      case 'price_desc':
+        result.sort((a, b) => (b.price || 0) - (a.price || 0));
+        break;
+      case 'popular':
+        result.sort((a, b) => {
+          const aLikes = db.likes.filter(l => l.product_id === a.id).length;
+          const bLikes = db.likes.filter(l => l.product_id === b.id).length;
+          return bLikes - aLikes;
+        });
+        break;
+      case 'newest':
+        result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        break;
+      default:
+        break;
+    }
+    
+    // 分页
+    const pageNum = parseInt(page) || 1;
+    const pageSize = parseInt(limit) || 20;
+    const total = result.length;
+    const start = (pageNum - 1) * pageSize;
+    const paginatedResult = result.slice(start, start + pageSize);
+    
+    // 添加喜欢数和评论数
+    const resultWithCounts = paginatedResult.map(p => ({
+      ...p,
+      like_count: db.likes.filter(l => l.product_id === p.id).length,
+      comment_count: db.comments.filter(c => c.product_id === p.id).length
+    }));
+    
+    res.json({
+      data: resultWithCounts,
+      pagination: {
+        page: pageNum,
+        limit: pageSize,
+        total,
+        total_pages: Math.ceil(total / pageSize)
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 获取搜索建议
+app.get('/api/products/suggestions', (req, res, next) => {
+  try {
+    const { q } = req.query;
+    if (!q || q.length < 1) return res.json([]);
+    
+    const searchTerm = q.toLowerCase();
+    const suggestions = new Set();
+    
+    // 从产品名称中提取建议
+    db.products.forEach(p => {
+      if (p.name.toLowerCase().includes(searchTerm)) {
+        suggestions.add(p.name);
+      }
+    });
+    
+    // 从分类中提取建议
+    categories.forEach(c => {
+      if (c.name.toLowerCase().includes(searchTerm)) {
+        suggestions.add(c.name);
+      }
+      if (c.children) {
+        c.children.forEach(child => {
+          if (child.name.toLowerCase().includes(searchTerm)) {
+            suggestions.add(child.name);
+          }
+        });
+      }
+    });
+    
+    res.json(Array.from(suggestions).slice(0, 10));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 获取热门搜索词
+app.get('/api/products/hot-searches', (req, res, next) => {
+  try {
+    // 基于产品点赞数确定热门搜索词
+    const productWithLikes = db.products.map(p => ({
+      ...p,
+      like_count: db.likes.filter(l => l.product_id === p.id).length
+    }));
+    
+    const hotProducts = productWithLikes
+      .sort((a, b) => b.like_count - a.like_count)
+      .slice(0, 10);
+    
+    res.json(hotProducts.map(p => p.name));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ==================== 统一错误处理 ====================
+
+// 数据验证错误处理
+app.use((err, req, res, next) => {
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({ error: '数据验证失败', details: err.message });
+  }
+  if (err.name === 'CastError') {
+    return res.status(400).json({ error: '无效的数据格式' });
+  }
+  next(err);
+});
 
 module.exports = app;
