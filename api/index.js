@@ -1535,3 +1535,124 @@ app.post('/api/live/:id/join', async (req, res) => {
 });
 
 // module.exports = app;
+
+// AR/3D Preview - simplified (just a placeholder endpoint)
+app.get('/api/ar/:id', (req, res) => {
+  const product = db.products.find(p => p.id === parseInt(req.params.id));
+  if (!product) return res.status(404).json({ error: '产品不存在' });
+  
+  res.json({
+    id: product.id,
+    name: product.name,
+    ar_url: `https://arvr.google.com/scene-viewer?url=${encodeURIComponent(product.image_url || '')}`,
+    model_3d: null
+  });
+});
+
+// NFT / Blockchain - simplified (record only, no actual blockchain)
+app.post('/api/nft/mint', async (req, res) => {
+  const { username, product_id } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  if (!db.nfts) db.nfts = [];
+  const existing = db.nfts.find(n => n.user_id === user.id && n.product_id === product_id);
+  if (existing) return res.json({ success: false, message: '已铸造' });
+  
+  const nft = {
+    id: db.nfts.length + 1,
+    user_id: user.id,
+    product_id,
+    token_id: 'LKB' + Date.now(),
+    minted_at: new Date().toISOString()
+  };
+  db.nfts.push(nft);
+  await saveDB();
+  
+  res.json({ success: true, token_id: nft.token_id, message: 'NFT铸造成功' });
+});
+
+app.get('/api/nfts', (req, res) => {
+  const { username } = req.query;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.json([]);
+  
+  const nfts = (db.nfts || []).filter(n => n.user_id === user.id).map(n => {
+    const product = db.products.find(p => p.id === n.product_id);
+    return { ...n, product };
+  });
+  res.json(nfts);
+});
+
+// Blockchain trace / verification
+app.get('/api/trace/:product_id', (req, res) => {
+  const productId = parseInt(req.params.product_id);
+  const records = [];
+  
+  // Creation record
+  const product = db.products.find(p => p.id === productId);
+  if (product) {
+    const creator = db.users.find(u => u.id === product.user_id);
+    records.push({
+      action: 'CREATE',
+      user: creator?.username,
+      timestamp: product.created_at,
+      hash: require('crypto').createHash('sha256').update(product.created_at + (creator?.username || '')).digest('hex').slice(0, 16)
+    });
+  }
+  
+  // Like records
+  (db.likes || []).filter(l => l.product_id === productId).forEach(l => {
+    const user = db.users.find(u => u.id === l.user_id);
+    records.push({
+      action: 'LIKE',
+      user: user?.username,
+      timestamp: l.created_at,
+      hash: require('crypto').createHash('sha256').update(l.created_at + (user?.username || '')).digest('hex').slice(0, 16)
+    });
+  });
+  
+  res.json({ product_id: productId, records });
+});
+
+// AI Chat / Smart customer service
+app.post('/api/ai/chat', async (req, res) => {
+  const { message } = req.body;
+  
+  // Simple keyword-based responses (in production, integrate with LLM)
+  const responses = {
+    '点赞': '点赞是表示喜欢产品的功能，点击心形图标即可点赞~',
+    '积分': '积分可以通过签到、评论、添加产品等方式获得，可以用于积分商城兑换礼品~',
+    '会员': '会员可享受去除广告、无限上传等特权，点击头像进入个人主页即可开通~',
+    '如何': '您可以在首页浏览产品，点击产品查看详情，也可以搜索感兴趣的内容~',
+    '你好': '您好！有什么可以帮助您的吗？',
+    '帮助': '您可以：浏览产品、点赞收藏、评论互动、每日签到获取积分~'
+  };
+  
+  let reply = '感谢您的咨询~您可以尝试：点赞、积分、会员、如何、帮助 等关键词~';
+  for (const [key, value] of Object.entries(responses)) {
+    if (message.includes(key)) {
+      reply = value;
+      break;
+    }
+  }
+  
+  res.json({ reply, timestamp: new Date().toISOString() });
+});
+
+// API Documentation endpoint
+app.get('/api', (req, res) => {
+  res.json({
+    name: 'LikeBox API',
+    version: '1.0',
+    endpoints: {
+      auth: ['POST /api/register', 'POST /api/login'],
+      products: ['GET /api/products', 'POST /api/products', 'POST /api/products/:id/like'],
+      social: ['POST /api/comments', 'POST /api/follow/:userId'],
+      points: ['POST /api/checkin', 'GET /api/points'],
+      advanced: ['POST /api/membership/upgrade', 'POST /api/nft/mint', 'POST /api/ai/chat']
+    }
+  });
+});
+
+// module.exports = app;
