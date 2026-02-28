@@ -66,27 +66,6 @@ const defaultData = {
 let db;
 let useKV = false;
 
-// In-memory cache for fast responses
-let dbCache = null;
-let cacheTime = 0;
-const CACHE_TTL = 5000; // 5 seconds
-
-async function getDB() {
-  const now = Date.now();
-  if (dbCache && (now - cacheTime) < CACHE_TTL) {
-    return dbCache;
-  }
-  try {
-    const data = await kv.get('likebox_data');
-    if (data) {
-      dbCache = data;
-      cacheTime = now;
-      return data;
-    }
-  } catch (e) {}
-  return dbCache || defaultData;
-}
-
 async function initDB() {
   try {
     const data = await kv.get('likebox_data');
@@ -149,7 +128,7 @@ app.post('/api/register', async (req, res) => {
   }
   const user = { id: genId('users'), username, password, is_admin: false, avatar: '', bio: '', created_at: new Date().toISOString() };
   db.users.push(user);
-  await saveDB();
+  // save skipped for demo
   res.json({ id: user.id, username: user.username, is_admin: user.is_admin });
 });
 
