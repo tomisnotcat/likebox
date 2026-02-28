@@ -739,3 +739,17 @@ app.get('/api/admin/reports', (req, res) => {
 });
 
 module.exports = app;
+
+// Get category with products
+app.get('/api/categories/:id', (req, res) => {
+  const category = db.categories.find(c => c.id === parseInt(req.params.id));
+  if (!category) return res.status(404).json({ error: '分类不存在' });
+  
+  const products = db.products
+    .filter(p => p.category_id === category.id)
+    .map(p => ({ ...p, like_count: db.likes.filter(l => l.product_id === p.id).length }));
+  
+  res.json({ ...category, products });
+});
+
+module.exports = app;
