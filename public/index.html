@@ -14,6 +14,7 @@
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
+/* Dark mode */
 .dark{background:#1a1a2e!important;color:#eee!important}
 .dark .bg-white{background:#16213e!important;color:#eee}
 .dark .text-gray-500,.dark .text-gray-400,.dark .text-gray-600,.dark .text-gray-700{color:#aaa!important}
@@ -21,15 +22,121 @@
 .dark input,.dark select,.dark textarea{background:#2a2a4a;color:#eee;border-color:#444}
 .dark .bg-gray-50,.dark .bg-gray-100{background:#252540!important}
 .dark ::placeholder{color:#888}
+
+/* Loading skeleton */
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+.dark .skeleton {
+    background: linear-gradient(90deg, #2a2a4a 25%, #3a3a5a 50%, #2a2a4a 75%);
+    background-size: 200% 100%;
+}
+
+/* Card hover effects */
+.product-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+}
+.dark .product-card:hover {
+    box-shadow: 0 12px 24px rgba(0,0,0,0.3);
+}
+
+/* Image overlay gradient */
+.card-image-overlay {
+    background: linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 50%);
+}
+
+/* Fade in animation */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+.fade-in-up {
+    animation: fadeInUp 0.4s ease forwards;
+}
+.fade-in-up:nth-child(1) { animation-delay: 0.05s; }
+.fade-in-up:nth-child(2) { animation-delay: 0.1s; }
+.fade-in-up:nth-child(3) { animation-delay: 0.15s; }
+.fade-in-up:nth-child(4) { animation-delay: 0.2s; }
+.fade-in-up:nth-child(5) { animation-delay: 0.25s; }
+.fade-in-up:nth-child(6) { animation-delay: 0.3s; }
+
+/* Mobile touch optimizations */
+@media (max-width: 768px) {
+    .product-card:active {
+        transform: scale(0.98);
+    }
+    .btn-mobile {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    nav button {
+        padding: 8px;
+    }
+    .grid {
+        gap: 12px;
+    }
+}
+
+/* Smooth loading spinner */
+.loading-spinner {
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #4f46e5;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.dark .loading-spinner {
+    border-color: #3a3a5a;
+    border-top-color: #4f46e5;
+}
+
+/* Like button animation */
+@keyframes likePulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+}
+.like-animate {
+    animation: likePulse 0.3s ease;
+}
+
+/* Staggered card entrance */
+.product-card {
+    opacity: 0;
+}
+.product-card.loaded {
+    opacity: 1;
+}
 </style>
 <meta name="theme-color" content="#4f46e5">
 <link rel="manifest" href="/manifest.json"></head>
 <body class="bg-gray-50 min-h-screen">
     <div id="app">
         <nav :class="{ dark: darkMode }" class="bg-white shadow-sm sticky top-0 z-50" @touchstart="touchStart" @touchend="touchEnd">
-            <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-                <h1 class="text-xl font-bold text-indigo-600 cursor-pointer" @click="goHome"><i class="fas fa-heart"></i> LikeBox</h1>
-                <div class="flex items-center gap-3">
+            <div class="max-w-6xl mx-auto px-2 sm:px-4 py-2 sm:py-3 flex items-center justify-between">
+                <h1 class="text-lg sm:text-xl font-bold text-indigo-600 cursor-pointer px-2" @click="goHome"><i class="fas fa-heart"></i> <span class="hidden sm:inline">LikeBox</span></h1>
+                <div class="flex items-center gap-1 sm:gap-3 overflow-x-auto max-w-[70%] sm:max-w-none">
                     <!-- Check-in -->
         <div v-if="showCheckin" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showCheckin = false">
             <div class="bg-white rounded-xl p-6 w-full max-w-sm text-center">
@@ -58,26 +165,46 @@
             </div>
         </div>
 
-        <button @click="darkMode = !darkMode; localStorage.setItem('darkMode', darkMode)" class="text-gray-600 hover:text-indigo-600"><i class="fas" :class="darkMode ? 'fa-sun' : 'fa-moon'"></i></button>
-                    <button @click="showCompare = true" class="text-gray-600 hover:text-indigo-600"><i class="fas fa-balance-scale"></i></button>
-                    <button @click="showWeekly = true; loadWeekly()" class="text-gray-600 hover:text-indigo-600" title="一周精选"><i class="fas fa-star"></i></button>
-                    <button @click="showCheckin = true; loadCheckin()" class="text-gray-600 hover:text-indigo-600" title="签到"><i class="fas fa-calendar-check"></i></button>
-                    <button @click="showPoints = true; loadPoints()" class="text-gray-600 hover:text-indigo-600" title="积分"><i class="fas fa-coins"></i></button>
-                    <button @click="showLeaderboard = true; loadLeaderboard()" class="text-gray-600 hover:text-indigo-600" title="活跃榜"><i class="fas fa-chart-line"></i></button>
-                    <button @click="showRanking = true; loadRanking()" class="text-gray-600 hover:text-indigo-600"><i class="fas fa-trophy"></i></button>
-                    <button @click="showProductRanking = true; loadProductRanking()" class="text-gray-600 hover:text-indigo-600"><i class="fas fa-fire"></i></button>
-                    <button v-if="isAdmin" @click="showAdmin = true; loadAdminStats()" class="text-gray-600 hover:text-indigo-600"><i class="fas fa-cog"></i></button>
+        <button @click="darkMode = !darkMode; localStorage.setItem('darkMode', darkMode)" class="text-gray-600 hover:text-indigo-600 p-2 btn-mobile" :title="darkMode ? '切换亮色模式' : '切换暗色模式'"><i class="fas" :class="darkMode ? 'fa-sun' : 'fa-moon'"></i></button>
+                    <button @click="showCompare = true" class="text-gray-600 hover:text-indigo-600 p-2 btn-mobile" title="对比"><i class="fas fa-balance-scale"></i></button>
+                    <button @click="showWeekly = true; loadWeekly()" class="text-gray-600 hover:text-indigo-600 p-2 btn-mobile" title="一周精选"><i class="fas fa-star"></i></button>
+                    <button @click="showCheckin = true; loadCheckin()" class="text-gray-600 hover:text-indigo-600 p-2 btn-mobile" title="签到"><i class="fas fa-calendar-check"></i></button>
+                    <button @click="showPoints = true; loadPoints()" class="text-gray-600 hover:text-indigo-600 p-2 btn-mobile" title="积分"><i class="fas fa-coins"></i></button>
+                    <button @click="showLeaderboard = true; loadLeaderboard()" class="text-gray-600 hover:text-indigo-600 p-2 btn-mobile" title="活跃榜"><i class="fas fa-chart-line"></i></button>
+                    <button @click="showRanking = true; loadRanking()" class="text-gray-600 hover:text-indigo-600 p-2 btn-mobile" title="排行榜"><i class="fas fa-trophy"></i></button>
+                    <button @click="showProductRanking = true; loadProductRanking()" class="text-gray-600 hover:text-indigo-600 p-2 btn-mobile" title="热门"><i class="fas fa-fire"></i></button>
+                    <button v-if="isAdmin" @click="showAdmin = true; loadAdminStats()" class="text-gray-600 hover:text-indigo-600 p-2 btn-mobile" title="管理"><i class="fas fa-cog"></i></button>
                     <template v-if="currentUser">
-                        <button @click="showProfile = true; loadUserData()" class="text-gray-600 hover:text-indigo-600"><i class="fas fa-user"></i></button>
-                        <span class="text-gray-600">{{ currentUser }}</span>
-                        <button @click="logout" class="text-sm text-gray-500">退出</button>
+                        <button @click="showProfile = true; loadUserData()" class="text-gray-600 hover:text-indigo-600 p-2 btn-mobile" title="个人中心"><i class="fas fa-user"></i></button>
+                        <span class="text-gray-600 text-sm hidden md:inline">{{ currentUser }}</span>
+                        <button @click="logout" class="text-sm text-gray-500 p-2">退出</button>
                     </template>
-                    <button v-else @click="showLogin = true" class="text-indigo-600">登录</button>
+                    <button v-else @click="showLogin = true" class="text-indigo-600 p-2 btn-mobile">登录</button>
                 </div>
             </div>
         </nav>
 
         <main class="max-w-6xl mx-auto px-4 py-6">
+            <!-- Loading State -->
+            <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div v-for="n in 6" :key="n" class="bg-white rounded-xl overflow-hidden">
+                    <div class="h-48 skeleton"></div>
+                    <div class="p-4 space-y-3">
+                        <div class="h-6 skeleton rounded w-3/4"></div>
+                        <div class="h-4 skeleton rounded w-full"></div>
+                        <div class="h-4 skeleton rounded w-1/2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div v-else-if="products.length === 0" class="text-center py-16">
+                <div class="text-6xl mb-4">📦</div>
+                <h3 class="text-xl font-semibold text-gray-600 mb-2">暂无产品</h3>
+                <p class="text-gray-500 mb-4">还没有任何产品，快来添加第一个吧！</p>
+                <button @click="showAddProduct = true" class="bg-indigo-600 text-white px-6 py-2 rounded-lg">添加产品</button>
+            </div>
+
             <!-- Brand Banner -->
             <div v-if="selectedBrand" class="mb-6 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl p-6 text-white">
                 <button @click="selectedBrand = null; brandId = null; loadProducts()" class="mb-2 text-white/80 hover:text-white"><i class="fas fa-arrow-left"></i> 返回</button>
@@ -91,25 +218,25 @@
                 </div>
             </div>
 
-            <div v-else class="mb-6 flex flex-wrap gap-3 items-center">
-                <input v-model="search" @keyup.enter="loadProducts" type="text" placeholder="搜索产品..." class="px-4 py-2 border rounded-lg w-64">
+            <div v-else class="mb-4 sm:mb-6 flex flex-wrap gap-2 sm:gap-3 items-center">
+                <input v-model="search" @keyup.enter="loadProducts" type="text" placeholder="搜索产品..." class="px-3 sm:px-4 py-2 border rounded-lg w-full sm:w-48 lg:w-64 touch-manipulation">
                 
-                <select v-model="brandId" @change="loadBrandProducts" class="px-4 py-2 border rounded-lg touch-manipulation">
+                <select v-model="brandId" @change="loadBrandProducts" class="px-3 sm:px-4 py-2 border rounded-lg touch-manipulation flex-1 sm:flex-none">
                     <option :value="null">全部品牌</option>
                     <option v-for="brand in brands" :key="brand.id" :value="brand.id">{{ brand.name }}</option>
                 </select>
                 
-                <select v-model="categoryId" @change="loadProducts" class="px-4 py-2 border rounded-lg">
+                <select v-model="categoryId" @change="loadProducts" class="px-3 sm:px-4 py-2 border rounded-lg touch-manipulation flex-1 sm:flex-none">
                     <option :value="null">全部分类</option>
                     <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
                 </select>
                 
-                <select v-model="sort" @change="loadProducts" class="px-4 py-2 border rounded-lg">
+                <select v-model="sort" @change="loadProducts" class="px-3 sm:px-4 py-2 border rounded-lg touch-manipulation">
                     <option value="latest">最新</option>
                     <option value="popular">最热</option>
                 </select>
                 
-                <button @click="showAddProduct = true" class="ml-auto bg-indigo-600 text-white px-4 py-2 rounded-lg">添加产品</button>
+                <button @click="showAddProduct = true" class="ml-auto bg-indigo-600 text-white px-4 py-2 rounded-lg w-full sm:w-auto btn-mobile">添加产品</button>
             </div>
 
             <div v-if="tags.length && !selectedBrand" class="mb-4 flex flex-wrap gap-2">
@@ -127,23 +254,26 @@
                 <button @click="compareList = []" class="text-sm text-gray-500">清空</button>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div v-for="product in products" :key="product.id" class="bg-white rounded-xl shadow-sm overflow-hidden" @click="viewProduct(product)">
-                    <div v-if="product.image_url" class="h-48 bg-gray-200 relative cursor-pointer" @click.stop="toggleCompare(product)">
-                        <img loading="lazy" :src="product.image_url" class="w-full h-full object-cover">
-                        <button @click.stop="toggleFavorite(product)" class="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/80"><i class="fas fa-star" :class="product.is_favorited ? 'text-yellow-500' : 'text-gray-400'"></i></button>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                <div v-for="product in products" :key="product.id" class="product-card bg-white rounded-xl shadow-sm overflow-hidden cursor-pointer" @click="viewProduct(product)">
+                    <div v-if="product.image_url" class="h-44 sm:h-48 bg-gray-200 relative overflow-hidden group" @click.stop="toggleCompare(product)">
+                        <img loading="lazy" :src="product.image_url" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105">
+                        <div class="card-image-overlay absolute inset-0"></div>
+                        <button @click.stop="toggleFavorite(product); $event.stopPropagation()" class="absolute top-2 right-2 w-9 h-9 rounded-full bg-white/90 backdrop-blur flex items-center justify-center hover:scale-110 transition-transform btn-mobile">
+                            <i class="fas fa-star transition-colors" :class="product.is_favorited ? 'text-yellow-500' : 'text-gray-400'"></i></button>
                         <span v-if="compareList.find(p => p.id === product.id)" class="absolute top-2 left-2 w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs"><i class="fas fa-check"></i></span>
                     </div>
-                    <div v-else class="h-48 bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center relative cursor-pointer" @click.stop="toggleCompare(product)">
+                    <div v-else class="h-44 sm:h-48 bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center relative overflow-hidden group" @click.stop="toggleCompare(product)">
                         <i class="fas fa-box text-4xl text-indigo-300"></i>
+                        <div class="card-image-overlay absolute inset-0"></div>
                     </div>
                     <div class="p-4">
                         <h3 class="font-semibold text-lg truncate">{{ product.name }}</h3>
                         <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{ product.description }}</p>
                         <div class="mt-3 flex items-center justify-between">
                             <span class="text-xs text-gray-400">{{ formatDate(product.created_at) }}</span>
-                            <button @click.stop="toggleLike(product)" class="flex items-center gap-1 px-3 py-1 rounded-full" :class="product.is_liked ? 'bg-red-100 text-red-600' : 'bg-gray-100'">
-                                <i class="fas fa-heart" :class="product.is_liked ? 'fa-solid' : 'fa-regular'"></i> {{ product.like_count }}
+                            <button @click.stop="toggleLike(product)" class="flex items-center gap-1 px-3 py-1.5 rounded-full transition-all btn-mobile" :class="product.is_liked ? 'bg-red-100 text-red-600' : 'bg-gray-100 hover:bg-gray-200'">
+                                <i class="fas fa-heart transition-transform" :class="[product.is_liked ? 'fa-solid' : 'fa-regular', product.likeAnimating ? 'like-animate' : '']"></i> <span>{{ product.like_count }}</span>
                             </button>
                         </div>
                     </div>
@@ -152,52 +282,52 @@
         </main>
 
         <!-- Login -->
-        <div v-if="showLogin" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showLogin = false">
-            <div class="bg-white rounded-xl p-6 w-96">
+        <div v-if="showLogin" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="showLogin = false">
+            <div class="bg-white rounded-xl p-5 sm:p-6 w-full max-w-sm">
                 <h2 class="text-xl font-bold mb-4">{{ isRegister ? '注册' : '登录' }}</h2>
-                <input v-model="authForm.username" type="text" placeholder="用户名" class="w-full px-4 py-2 border rounded-lg mb-3">
-                <input v-model="authForm.password" type="password" placeholder="密码" class="w-full px-4 py-2 border rounded-lg mb-4" @keyup.enter="auth">
-                <button @click="auth" class="w-full bg-indigo-600 text-white py-2 rounded-lg mb-3">{{ isRegister ? '注册' : '登录' }}</button>
+                <input v-model="authForm.username" type="text" placeholder="用户名" class="w-full px-4 py-2.5 border rounded-lg mb-3 touch-manipulation">
+                <input v-model="authForm.password" type="password" placeholder="密码" class="w-full px-4 py-2.5 border rounded-lg mb-4 touch-manipulation" @keyup.enter="auth">
+                <button @click="auth" class="w-full bg-indigo-600 text-white py-2.5 rounded-lg mb-3 btn-mobile">{{ isRegister ? '注册' : '登录' }}</button>
                 <p class="text-center text-sm text-gray-500">{{ isRegister ? '已有账号？' : '没有账号？' }} <a href="#" @click.prevent="isRegister = !isRegister" class="text-indigo-600">{{ isRegister ? '去登录' : '去注册' }}</a></p>
             </div>
         </div>
 
         <!-- Add Product -->
-        <div v-if="showAddProduct" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showAddProduct = false">
-            <div class="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div v-if="showAddProduct" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4" @click.self="showAddProduct = false">
+            <div class="bg-white rounded-xl p-4 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
                 <h2 class="text-xl font-bold mb-4">添加产品</h2>
-                <input v-model="productForm.name" type="text" placeholder="产品名称 *" class="w-full px-4 py-2 border rounded-lg mb-3">
-                <textarea v-model="productForm.description" placeholder="产品描述 *" rows="3" class="w-full px-4 py-2 border rounded-lg mb-3"></textarea>
+                <input v-model="productForm.name" type="text" placeholder="产品名称 *" class="w-full px-4 py-2.5 border rounded-lg mb-3 touch-manipulation">
+                <textarea v-model="productForm.description" placeholder="产品描述 *" rows="3" class="w-full px-4 py-2 border rounded-lg mb-3 touch-manipulation"></textarea>
                 <div class="mb-3">
                     <label class="block text-sm text-gray-500 mb-1">产品图片</label>
-                    <input type="file" @change="handleImageUpload" accept="image/*" class="w-full px-4 py-2 border rounded-lg">
+                    <input type="file" @change="handleImageUpload" accept="image/*" class="w-full px-4 py-2 border rounded-lg touch-manipulation">
                     <img loading="lazy" v-if="productForm.imagePreview" :src="productForm.imagePreview" class="mt-2 h-32 object-cover rounded">
                 </div>
-                <input v-model="productForm.product_url" type="text" placeholder="商品链接" class="w-full px-4 py-2 border rounded-lg mb-3">
-                <input v-model="productForm.tags" type="text" placeholder="标签（逗号分隔）" class="w-full px-4 py-2 border rounded-lg mb-3">
-                <select v-model="productForm.category_id" class="w-full px-4 py-2 border rounded-lg mb-4">
+                <input v-model="productForm.product_url" type="text" placeholder="商品链接" class="w-full px-4 py-2 border rounded-lg mb-3 touch-manipulation">
+                <input v-model="productForm.tags" type="text" placeholder="标签（逗号分隔）" class="w-full px-4 py-2 border rounded-lg mb-3 touch-manipulation">
+                <select v-model="productForm.category_id" class="w-full px-4 py-2 border rounded-lg mb-4 touch-manipulation">
                     <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
                 </select>
                 <div class="flex gap-3">
-                    <button @click="showAddProduct = false" class="flex-1 border py-2 rounded-lg">取消</button>
-                    <button @click="addProduct" class="flex-1 bg-indigo-600 text-white py-2 rounded-lg">添加</button>
+                    <button @click="showAddProduct = false" class="flex-1 border py-2.5 rounded-lg btn-mobile">取消</button>
+                    <button @click="addProduct" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-lg btn-mobile">添加</button>
                 </div>
             </div>
         </div>
 
         <!-- Product Detail -->
-        <div v-if="selectedProduct" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="selectedProduct = null">
+        <div v-if="selectedProduct" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4" @click.self="selectedProduct = null">
             <div class="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                <div v-if="selectedProduct.image_url" class="h-64 bg-gray-200"><img loading="lazy" :src="selectedProduct.image_url" class="w-full h-full object-cover"></div>
-                <div class="p-6">
+                <div v-if="selectedProduct.image_url" class="h-48 sm:h-64 bg-gray-200"><img loading="lazy" :src="selectedProduct.image_url" class="w-full h-full object-cover"></div>
+                <div class="p-4 sm:p-6">
                     <div class="flex items-start justify-between">
-                        <div><h2 class="text-2xl font-bold">{{ selectedProduct.name }}</h2><p class="text-sm text-gray-500">{{ formatDate(selectedProduct.created_at) }}</p></div>
-                        <button @click="toggleLike(selectedProduct)" class="flex items-center gap-2 px-4 py-2 rounded-full" :class="selectedProduct.is_liked ? 'bg-red-100 text-red-600' : 'bg-gray-100'">
-                            <i class="fas fa-heart" :class="selectedProduct.is_liked ? 'fa-solid' : 'fa-regular'"></i> {{ selectedProduct.like_count }}
+                        <div><h2 class="text-xl sm:text-2xl font-bold">{{ selectedProduct.name }}</h2><p class="text-sm text-gray-500">{{ formatDate(selectedProduct.created_at) }}</p></div>
+                        <button @click="toggleLike(selectedProduct)" class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full btn-mobile" :class="selectedProduct.is_liked ? 'bg-red-100 text-red-600' : 'bg-gray-100'">
+                            <i class="fas fa-heart" :class="selectedProduct.is_liked ? 'fa-solid' : 'fa-regular'"></i> <span>{{ selectedProduct.like_count }}</span>
                         </button>
                     </div>
                     <p class="mt-4">{{ selectedProduct.description }}</p>
-                    <div class="mt-3 flex gap-2">
+                    <div class="mt-3 flex gap-2 flex-wrap">
                         <span v-for="tag in (selectedProduct.tags || '').split(',').filter(t => t)" :key="tag" class="px-2 py-1 text-xs bg-gray-100 rounded">{{ tag }}</span>
                     </div>
                     <a v-if="selectedProduct.product_url" :href="selectedProduct.product_url" target="_blank" class="mt-4 inline-flex items-center gap-2 text-indigo-600">查看商品 <i class="fas fa-external-link-alt"></i></a>
@@ -206,16 +336,16 @@
                     <div class="mt-4 p-3 bg-gray-50 rounded-lg">
                         <p class="text-sm text-gray-500 mb-2">分享</p>
                         <div class="flex gap-2">
-                            <button @click="shareWeibo" class="px-3 py-1 bg-red-500 text-white rounded text-sm"><i class="fab fa-weibo"></i> 微博</button>
-                            <button @click="copyLink" class="px-3 py-1 bg-gray-200 rounded text-sm">复制链接</button>
+                            <button @click="shareWeibo" class="px-3 py-1.5 bg-red-500 text-white rounded text-sm btn-mobile"><i class="fab fa-weibo"></i> 微博</button>
+                            <button @click="copyLink" class="px-3 py-1.5 bg-gray-200 rounded text-sm btn-mobile">复制链接</button>
                         </div>
                     </div>
 
                     <div class="mt-6 border-t pt-4">
                         <h3 class="font-semibold mb-3">评论 ({{ comments.length }})</h3>
                         <div v-if="currentUser" class="mb-4 flex gap-2">
-                            <input v-model="newComment" @keyup.enter="submitComment" type="text" placeholder="写评论..." class="flex-1 px-4 py-2 border rounded-lg">
-                            <button @click="submitComment" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">发表</button>
+                            <input v-model="newComment" @keyup.enter="submitComment" type="text" placeholder="写评论..." class="flex-1 px-4 py-2 border rounded-lg touch-manipulation">
+                            <button @click="submitComment" class="px-4 py-2 bg-indigo-600 text-white rounded-lg btn-mobile">发表</button>
                         </div>
                         <div class="space-y-3">
                             <div v-for="comment in comments" :key="comment.id" class="bg-gray-50 rounded-lg p-3">
@@ -232,9 +362,9 @@
         </div>
 
         <!-- Compare Modal -->
-        <div v-if="showCompare" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showCompare = false">
-            <div class="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[80vh] overflow-y-auto">
-                <div class="flex justify-between mb-4"><h2 class="text-xl font-bold">产品对比</h2><button @click="showCompare = false"><i class="fas fa-times"></i></button></div>
+        <div v-if="showCompare" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4" @click.self="showCompare = false">
+            <div class="bg-white rounded-xl p-4 sm:p-6 w-full max-w-4xl max-h-[80vh] overflow-y-auto">
+                <div class="flex justify-between mb-4"><h2 class="text-xl font-bold">产品对比</h2><button @click="showCompare = false" class="p-2"><i class="fas fa-times"></i></button></div>
                 <div v-if="compareList.length < 2" class="text-center py-8 text-gray-500">请先添加至少2个产品进行对比</div>
                 <div v-else class="overflow-x-auto">
                     <table class="w-full text-sm">
@@ -247,7 +377,7 @@
                         <tbody>
                             <tr class="border-b">
                                 <td class="p-2 font-medium">图片</td>
-                                <td v-for="p in compareList" :key="p.id" class="p-2"><img loading="lazy" v-if="p.image_url" :src="p.image_url" class="h-16 object-cover rounded"></td>
+                                <td v-for="p in compareList" :key="p.id" class="p-2"><img loading="lazy" v-if="p.image_url" :src="p.image_url" class="h-16 w-20 object-cover rounded"></td>
                             </tr>
                             <tr class="border-b">
                                 <td class="p-2 font-medium">描述</td>
@@ -259,7 +389,7 @@
                             </tr>
                             <tr>
                                 <td class="p-2 font-medium">操作</td>
-                                <td v-for="p in compareList" :key="p.id" class="p-2"><button @click="viewProduct(p); showCompare = false" class="text-indigo-600 text-xs">查看详情</button></td>
+                                <td v-for="p in compareList" :key="p.id" class="p-2"><button @click="viewProduct(p); showCompare = false" class="text-indigo-600 text-xs btn-mobile px-2 py-1">查看详情</button></td>
                             </tr>
                         </tbody>
                     </table>
@@ -406,6 +536,7 @@
         createApp({
             data() {
                 return {
+                    loading: true,
                     currentUser: localStorage.getItem('username') || null,
                     currentUserId: null, isAdmin: false,
                     products: [], categories: [], brands: [], tags: [],
@@ -439,6 +570,7 @@
                 async loadTags() { this.tags = await (await fetch('/api/tags')).json(); },
                 async loadBrands() { this.brands = await (await fetch('/api/brands')).json(); },
                 async loadProducts() {
+                    this.loading = true;
                     const params = new URLSearchParams();
                     if (this.categoryId) params.append('category_id', this.categoryId);
                     if (this.brandId) params.append('brand_id', this.brandId);
@@ -446,10 +578,23 @@
                     params.append('sort', this.sort);
                     if (this.currentUser) params.append('username', this.currentUser);
                     this.products = await (await fetch('/api/products?' + params)).json();
+                    this.$nextTick(() => {
+                        this.loading = false;
+                        this.$nextTick(() => {
+                            document.querySelectorAll('.product-card').forEach((card, i) => {
+                                setTimeout(() => card.classList.add('loaded'), i * 50);
+                            });
+                        });
+                    });
                 },
                 loadBrandProducts() {
                     if (this.brandId) {
-                        fetch('/api/brands/' + this.brandId).then(r => r.json()).then(b => { this.selectedBrand = b; this.products = b.products || []; });
+                        this.loading = true;
+                        fetch('/api/brands/' + this.brandId).then(r => r.json()).then(b => { 
+                            this.selectedBrand = b; 
+                            this.products = b.products || [];
+                            this.loading = false;
+                        });
                     } else { this.selectedBrand = null; this.loadProducts(); }
                 },
                 async loadBrand(id) {
@@ -513,8 +658,10 @@
                 async loadComments(productId) { this.comments = await (await fetch('/api/products/' + productId + '/comments?username=' + (this.currentUser || ''))).json(); },
                 async toggleLike(product) {
                     if (!this.currentUser) { this.showLogin = true; return; }
+                    product.likeAnimating = true;
                     const res = await fetch('/api/products/' + product.id + '/like', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: this.currentUser }) });
                     const data = await res.json(); product.like_count = data.count; product.is_liked = data.liked;
+                    setTimeout(() => product.likeAnimating = false, 300);
                     if (this.selectedProduct && this.selectedProduct.id === product.id) { this.selectedProduct.like_count = data.count; this.selectedProduct.is_liked = data.liked; }
                 },
                 async toggleFavorite(product) {
