@@ -14,7 +14,19 @@ const defaultData = {
     { id: 5, name: 'Starbucks', logo: 'https://logo.clearbit.com/starbucks.com', description: '星巴克' },
     { id: 6, name: 'Dyson', logo: 'https://logo.clearbit.com/dyson.com', description: '戴森' },
     { id: 7, name: 'SK-II', logo: 'https://logo.clearbit.com/sk-ii.com', description: 'SK-II' },
-    { id: 8, name: 'lululemon', logo: 'https://logo.clearbit.com/lululemon.com', description: '露露乐蒙' }
+    { id: 8, name: 'lululemon', logo: 'https://logo.clearbit.com/lululemon.com', description: '露露乐蒙' },
+    { id: 9, name: 'Tesla', logo: 'https://logo.clearbit.com/tesla.com', description: '特斯拉' },
+    { id: 10, name: 'Tesla', logo: 'https://logo.clearbit.com/tesla.com', description: '特斯拉' },
+    { id: 11, name: 'Tesla', logo: 'https://logo.clearbit.com/tesla.com', description: '特斯拉' },
+    { id: 12, name: 'Toyota', logo: 'https://logo.clearbit.com/toyota.com', description: '丰田' },
+    { id: 13, name: 'BMW', logo: 'https://logo.clearbit.com/bmw.com', description: '宝马' },
+    { id: 14, name: 'Mercedes', logo: 'https://logo.clearbit.com/mercedes-benz.com', description: '奔驰' },
+    { id: 15, name: 'Adidas', logo: 'https://logo.clearbit.com/adidas.com', description: '阿迪达斯' },
+    { id: 16, name: 'Puma', logo: 'https://logo.clearbit.com/puma.com', description: '彪马' },
+    { id: 17, name: 'Uniqlo', logo: 'https://logo.clearbit.com/uniqlo.com', description: '优衣库' },
+    { id: 18, name: 'Zara', logo: 'https://logo.clearbit.com/zara.com', description: 'Zara' },
+    { id: 19, name: 'IKEA', logo: 'https://logo.clearbit.com/ikea.com', description: '宜家' },
+    { id: 20, name: 'MUJI', logo: 'https://logo.clearbit.com/muji.com', description: '无印良品' }
   ],
   users: [
     { id: 1, username: 'demo', password: '123456', is_admin: true, avatar: '', bio: '', created_at: '2024-01-01T00:00:00.000Z' }
@@ -22,7 +34,8 @@ const defaultData = {
   categories: [
     { id: 1, name: '数码' }, { id: 2, name: '生活' }, { id: 3, name: '食品' },
     { id: 4, name: '服饰' }, { id: 5, name: '图书' }, { id: 6, name: '游戏' },
-    { id: 7, name: '其他' }
+    { id: 7, name: '美妆' }, { id: 8, name: '运动' }, { id: 9, name: '家居' },
+    { id: 10, name: '汽车' }, { id: 11, name: '旅游' }, { id: 12, name: '教育' }
   ],
   products: [
     { id: 1, name: 'iPhone 15 Pro', description: '钛金属设计，A17 Pro芯片，专业相机系统', image_url: 'https://picsum.photos/seed/iphone/400/300', product_url: 'https://www.apple.com/shop/buy-iphone/iphone-15-pro', category_id: 1, user_id: 1, tags: '手机,苹果,数码', created_at: '2024-01-15T10:00:00.000Z' },
@@ -36,7 +49,19 @@ const defaultData = {
     { id: 9, name: '《三体》全套', description: '刘慈欣科幻巨著，值得反复阅读', image_url: 'https://picsum.photos/seed/santi/400/300', product_url: '', category_id: 5, user_id: 1, tags: '图书,科幻,小说', created_at: '2024-02-25T10:00:00.000Z' },
     { id: 10, name: 'lululemon瑜伽裤', description: '高弹面料，舒适透气，时尚运动风', image_url: 'https://picsum.photos/seed/lulu/400/300', product_url: '', category_id: 4, user_id: 1, tags: '运动,瑜伽,lululemon', created_at: '2024-03-01T10:00:00.000Z' },
     { id: 11, name: 'Air Jordan 1', description: '经典篮球鞋，潮流百搭神器', image_url: 'https://picsum.photos/seed/jordan/400/300', product_url: '', category_id: 4, user_id: 1, tags: '鞋,Nike,篮球', created_at: '2024-03-05T10:00:00.000Z' },
-    { id: 12, name: 'Apple Watch S9', description: '智能手表，健康监测，时尚配件', image_url: 'https://picsum.photos/seed/watch/400/300', product_url: 'https://www.apple.com/watch/', category_id: 1, user_id: 1, tags: '手表,苹果,智能穿戴', created_at: '2024-03-10T10:00:00.000Z' }
+    { id: 12, name: 'Apple Watch S9', description: '智能手表，健康监测，时尚配件', image_url: 'https://picsum.photos/seed/watch/400/300', product_url: 'https://www.apple.com/watch/', category_id: 1, user_id: 1, tags: '手表,苹果,智能穿戴', created_at: '2024-03-10T10:00:00.000Z' },
+    { id: 13, name: 'Tesla Model 3', description: '纯电动智能轿车，自动驾驶领先', image_url: 'https://picsum.photos/seed/tesla3/400/300', product_url: 'https://www.tesla.com/model3', category_id: 10, user_id: 1, tags: '汽车,特斯拉,电动车', created_at: '2024-03-15T10:00:00.000Z' },
+    { id: 14, name: 'iPad Pro M4', description: '专业级平板电脑，M4芯片强大性能', image_url: 'https://picsum.photos/seed/ipad/400/300', product_url: 'https://www.apple.com/ipad-pro/', category_id: 1, user_id: 1, tags: '平板,苹果,办公', created_at: '2024-03-20T10:00:00.000Z' },
+    { id: 15, name: '索尼 WH-1000XM5', description: '顶级降噪耳机，音质卓越', image_url: 'https://picsum.photos/seed/sony headphone/400/300', product_url: '', category_id: 1, user_id: 1, tags: '耳机,索尼,降噪', created_at: '2024-03-25T10:00:00.000Z' },
+    { id: 16, name: '宜家马尔姆床架', description: '简约北欧风，实用收纳设计', image_url: 'https://picsum.photos/seed/ikea bed/400/300', product_url: 'https://www.ikea.com/', category_id: 9, user_id: 1, tags: '家居,宜家,床', created_at: '2024-04-01T10:00:00.000Z' },
+    { id: 17, name: '优衣库联名T恤', description: '设计师联名款，舒适纯棉', image_url: 'https://picsum.photos/seed/uniqlo/400/300', product_url: '', category_id: 4, user_id: 1, tags: '服饰,优衣库,T恤', created_at: '2024-04-05T10:00:00.000Z' },
+    { id: 18, name: '雅思剑桥英语', description: '官方真题集备考必备', image_url: 'https://picsum.photos/seed/ielts/400/300', product_url: '', category_id: 12, user_id: 1, tags: '图书,教育,英语', created_at: '2024-04-10T10:00:00.000Z' },
+    { id: 19, name: '海蓝之谜面霜', description: '奢华护肤修护神器', image_url: 'https://picsum.photos/seed/lamer/400/300', product_url: '', category_id: 7, user_id: 1, tags: '美妆,海蓝之谜,面霜', created_at: '2024-04-15T10:00:00.000Z' },
+    { id: 20, name: '瑜伽健身垫', description: '加厚防滑专业瑜伽垫', image_url: 'https://picsum.photos/seed/yoga mat/400/300', product_url: '', category_id: 8, user_id: 1, tags: '运动,瑜伽,健身', created_at: '2024-04-20T10:00:00.000Z' },
+    { id: 21, name: '任天堂王国之泪', description: '开放世界冒险神作', image_url: 'https://picsum.photos/seed/totk/400/300', product_url: 'https://www.nintendo.com/', category_id: 6, user_id: 1, tags: '游戏,任天堂,塞尔达', created_at: '2024-04-25T10:00:00.000Z' },
+    { id: 22, name: '无印良品超声波香薰机', description: '静音加湿香薰一体', image_url: 'https://picsum.photos/seed/aroma/400/300', product_url: '', category_id: 9, user_id: 1, tags: '家居,无印良品,香薰', created_at: '2024-05-01T10:00:00.000Z' },
+    { id: 23, name: '丰田卡罗拉', description: '家用轿车经典款', image_url: 'https://picsum.photos/seed/corolla/400/300', product_url: '', category_id: 10, user_id: 1, tags: '汽车,丰田,家用', created_at: '2024-05-05T10:00:00.000Z' },
+    { id: 24, name: '阿迪达斯跑鞋', description: 'Boost缓震跑步鞋', image_url: 'https://picsum.photos/seed/adidas shoes/400/300', product_url: '', category_id: 8, user_id: 1, tags: '运动,阿迪达斯,跑鞋', created_at: '2024-05-10T10:00:00.000Z' }
   ],
   likes: [
     { id: 1, user_id: 1, product_id: 1, created_at: '2024-01-16T10:00:00.000Z' },
@@ -66,7 +91,7 @@ const defaultData = {
   dao_votes: [],
   nfts: [],
   time_capsules: [],
-  nextIds: { users: 2, brands: 9, products: 13, likes: 4, comments: 4, comment_likes: 1, favorites: 1, reports: 1, notifications: 1, follows: 1, history: 1, posts: 1, messages: 1, collections: 1 }
+  nextIds: { users: 2, brands: 21, products: 25, likes: 4, comments: 4, comment_likes: 1, favorites: 1, reports: 1, notifications: 1, follows: 1, history: 1, posts: 1, messages: 1, collections: 1 }
 };
 
 let db = { ...defaultData };
