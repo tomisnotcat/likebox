@@ -13,7 +13,7 @@ const defaultData = {
     { id: 3, name: 'Nintendo', logo: 'https://logo.clearbit.com/nintendo.com', description: '任天堂' },
     { id: 4, name: 'Nike', logo: 'https://logo.clearbit.com/nike.com', description: '耐克' },
     { id: 5, name: 'Starbucks', logo: 'https://logo.clearbit.com/starbucks.com', description: '星巴克' },
-    { id: 6, name: ' Dyson', logo: 'https://logo.clearbit.com/dyson.com', description: '戴森' },
+    { id: 6, name: 'Dyson', logo: 'https://logo.clearbit.com/dyson.com', description: '戴森' },
     { id: 7, name: 'SK-II', logo: 'https://logo.clearbit.com/sk-ii.com', description: 'SK-II' },
     { id: 8, name: 'lululemon', logo: 'https://logo.clearbit.com/lululemon.com', description: '露露乐蒙' }
   ],
@@ -198,7 +198,19 @@ app.get('/api/products', (req, res) => {
     // Detect brand
     let brand_id = null;
     const tagsLower = (p.tags || '').toLowerCase();
-    const brand = (db.brands || []).find(b => tagsLower.includes(b.name.toLowerCase()));
+    const brand = (db.brands || []).find(b => {
+      const nameLower = b.name.toLowerCase();
+      // Also check Chinese aliases
+      if (nameLower === 'apple' && tagsLower.includes('苹果')) return true;
+      if (nameLower === 'sony' && tagsLower.includes('索尼')) return true;
+      if (nameLower === 'nintendo' && tagsLower.includes('任天堂')) return true;
+      if (nameLower === 'nike' && tagsLower.includes('nike')) return true;
+      if (nameLower === 'starbucks' && tagsLower.includes('星巴克')) return true;
+      if (nameLower === 'dyson' && tagsLower.includes('戴森')) return true;
+      if (nameLower === 'sk-ii' && tagsLower.includes('sk-ii')) return true;
+      if (nameLower === 'lululemon' && tagsLower.includes('lululemon')) return true;
+      return tagsLower.includes(nameLower);
+    });
     if (brand) brand_id = brand.id;
     return { ...p, like_count, brand_id };
   });
