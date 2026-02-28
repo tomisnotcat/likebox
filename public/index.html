@@ -28,9 +28,39 @@
             <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
                 <h1 class="text-xl font-bold text-indigo-600 cursor-pointer" @click="goHome"><i class="fas fa-heart"></i> LikeBox</h1>
                 <div class="flex items-center gap-3">
-                    <button @click="darkMode = !darkMode; localStorage.setItem('darkMode', darkMode)" class="text-gray-600 hover:text-indigo-600"><i class="fas" :class="darkMode ? 'fa-sun' : 'fa-moon'"></i></button>
+                    <!-- Check-in -->
+        <div v-if="showCheckin" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showCheckin = false">
+            <div class="bg-white rounded-xl p-6 w-full max-w-sm text-center">
+                <div v-if="checkinStatus.checked" class="text-green-500 text-4xl mb-2"><i class="fas fa-check-circle"></i></div>
+                <div v-else class="text-yellow-500 text-4xl mb-2"><i class="fas fa-gift"></i></div>
+                <h2 class="text-xl font-bold mb-2">{{ checkinStatus.checked ? "今日已签到" : "每日签到" }}</h2>
+                <p class="text-gray-500 mb-4">连续签到: {{ checkinStatus.days }} 天</p>
+                <button v-if="!checkinStatus.checked" @click="doCheckin" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold">签到 +10 积分</button>
+                <button v-else @click="showCheckin = false" class="w-full border py-2 rounded-lg">确定</button>
+            </div>
+        </div>
+
+        <!-- Points -->
+        <div v-if="showPoints" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showPoints = false">
+            <div class="bg-white rounded-xl p-6 w-full max-w-sm text-center">
+                <h2 class="text-xl font-bold mb-4"><i class="fas fa-coins text-yellow-500"></i> 我的积分</h2>
+                <div class="text-4xl font-bold text-indigo-600 mb-2">{{ userPoints }}</div>
+                <p class="text-gray-500 mb-4">等级 Lv.{{ userLevel }}</p>
+                <div class="text-left text-sm bg-gray-50 p-3 rounded-lg">
+                    <p class="mb-1">👍 点赞 +1 积分</p>
+                    <p class="mb-1">💬 评论 +2 积分</p>
+                    <p class="mb-1">➕ 添加产品 +5 积分</p>
+                    <p class="mb-1">📅 每日签到 +10 积分</p>
+                    <p>📤 分享 +5 积分</p>
+                </div>
+            </div>
+        </div>
+
+        <button @click="darkMode = !darkMode; localStorage.setItem('darkMode', darkMode)" class="text-gray-600 hover:text-indigo-600"><i class="fas" :class="darkMode ? 'fa-sun' : 'fa-moon'"></i></button>
                     <button @click="showCompare = true" class="text-gray-600 hover:text-indigo-600"><i class="fas fa-balance-scale"></i></button>
                     <button @click="showWeekly = true; loadWeekly()" class="text-gray-600 hover:text-indigo-600" title="一周精选"><i class="fas fa-star"></i></button>
+                    <button @click="showCheckin = true; loadCheckin()" class="text-gray-600 hover:text-indigo-600" title="签到"><i class="fas fa-calendar-check"></i></button>
+                    <button @click="showPoints = true; loadPoints()" class="text-gray-600 hover:text-indigo-600" title="积分"><i class="fas fa-coins"></i></button>
                     <button @click="showLeaderboard = true; loadLeaderboard()" class="text-gray-600 hover:text-indigo-600" title="活跃榜"><i class="fas fa-chart-line"></i></button>
                     <button @click="showRanking = true; loadRanking()" class="text-gray-600 hover:text-indigo-600"><i class="fas fa-trophy"></i></button>
                     <button @click="showProductRanking = true; loadProductRanking()" class="text-gray-600 hover:text-indigo-600"><i class="fas fa-fire"></i></button>
