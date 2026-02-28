@@ -7,96 +7,91 @@ app.use(express.json({ limit: '2mb' }));
 
 const categories = [
   { id: 1, name: '数码', children: [
-    { id: 101, name: '手机', children: [{ id: 10101, name: '智能手机' }, { id: 10102, name: '老人机' }] },
-    { id: 102, name: '电脑', children: [{ id: 10201, name: '笔记本电脑' }, { id: 10202, name: '台式机' }] },
-    { id: 103, name: '耳机', children: [{ id: 10301, name: '蓝牙耳机' }, { id: 10302, name: '头戴式耳机' }] }
+    { id: 101, name: '手机', children: [{ id: 10101, name: '智能手机' }] },
+    { id: 102, name: '电脑', children: [{ id: 10201, name: '笔记本电脑' }] },
+    { id: 103, name: '耳机', children: [{ id: 10301, name: '蓝牙耳机' }] }
   ]},
   { id: 2, name: '运动', children: [
-    { id: 201, name: '跑步', children: [{ id: 20101, name: '跑鞋' }, { id: 20102, name: '运动服' }] },
-    { id: 202, name: '瑜伽', children: [{ id: 20201, name: '瑜伽垫' }, { id: 20202, name: '瑜伽服' }] }
+    { id: 201, name: '跑步', children: [{ id: 20101, name: '跑鞋' }] }
   ]},
   { id: 3, name: '食品', children: [
-    { id: 301, name: '饮料', children: [{ id: 30101, name: '咖啡' }, { id: 30102, name: '茶' }] },
-    { id: 302, name: '零食', children: [{ id: 30201, name: '坚果' }, { id: 30202, name: '饼干' }] }
+    { id: 301, name: '饮料', children: [{ id: 30101, name: '咖啡' }] }
   ]},
   { id: 4, name: '服饰', children: [
     { id: 401, name: 'T恤', children: [{ id: 40101, name: '纯棉T恤' }] },
-    { id: 402, name: '裤子', children: [{ id: 40201, name: '牛仔裤' }] }
+    { id: 402, name: '外套', children: [{ id: 40201, name: '夹克' }] }
   ]},
   { id: 5, name: '图书', children: [
-    { id: 501, name: '小说', children: [] },
-    { id: 502, name: '教育', children: [{ id: 50201, name: '英语' }] }
+    { id: 501, name: '小说', children: [] }
   ]},
-  { id: 6, name: '游戏', children: [
-    { id: 601, name: '主机', children: [{ id: 60101, name: 'Switch' }, { id: 60102, name: 'PS5' }] }
+  { id: 6, name: '电子产品', children: [
+    { id: 601, name: '配件', children: [] }
   ]},
   { id: 7, name: '美妆', children: [
-    { id: 701, name: '护肤品', children: [{ id: 70101, name: '面霜' }] }
+    { id: 701, name: '护肤品', children: [] }
   ]},
-  { id: 9, name: '家居', children: [
-    { id: 901, name: '家具', children: [{ id: 90101, name: '床' }] },
-    { id: 902, name: '小家电', children: [{ id: 90201, name: '香薰机' }] }
-  ]},
-  { id: 10, name: '汽车', children: [] }
+  { id: 8, name: '家居', children: [
+    { id: 801, name: '家具', children: [] }
+  ]}
 ];
 
-const brands = ['Apple', 'Samsung', 'Huawei', 'Xiaomi', 'OPPO', 'vivo', 'Sony', 'Nike', 'Adidas', 'Puma', 'NewBalance', 'UnderArmour', 'IKEA', 'MUJI', 'Zara', 'HM', 'Uniqlo', 'Starbucks', 'Tesla', 'BYD', 'NIO', 'LiAuto', 'BMW', 'Mercedes'];
-const types = ['手机', '电脑', '平板', '耳机', '手表', '音箱', '相机', '键盘', '鼠标', '显示器', '充电宝', '数据线', '充电器', '跑鞋', '运动鞋', '瑜伽垫', 'T恤', '裤子', '外套', '咖啡', '茶', '零食', '坚果', '小说', '教材', '游戏', '主机', '面霜', '口红', '香水', '床', '沙发', '桌子', '椅子', '净化器', '汽车'];
-const features = ['高性能', '高品质', '超薄', '轻便', '耐用', '时尚', '经典', '智能', '便携', '专业'];
-const colors = ['4f46e5', 'ec4899', '10b981', 'f59e0b', '3b82f6', '8b5cf6', 'ef4444', '06b6d4'];
+// Fetch products from Fake Store API
+const fakeStoreProducts = [
+  {id: 1, title: "Fjallraven - Foldsack No. 1 Backpack", category: "men's clothing", image: "https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.png", price: 109.95, rating: {rate: 3.9, count: 120}},
+  {id: 2, title: "Mens Casual Premium Slim Fit T-Shirts", category: "men's clothing", image: "https://fakestoreapi.com/img/71-3HjGNDUL._AC_SY879._SX._UX._SY._UY_.png", price: 22.3, rating: {rate: 4.1, count: 259}},
+  {id: 3, title: "Mens Cotton Jacket", category: "men's clothing", image: "https://fakestoreapi.com/img/71li-ujtlUL._AC_UX679_.png", price: 55.99, rating: {rate: 4.7, count: 500}},
+  {id: 4, title: "Mens Casual Slim Fit", category: "men's clothing", image: "https://fakestoreapi.com/img/71YXzeOuslL._AC_UY879_.png", price: 15.99, rating: {rate: 2.1, count: 430}},
+  {id: 5, title: "John Hardy Women's Legends Naga Bracelet", category: "jewelery", image: "https://fakestoreapi.com/img/71pWzhdJNwL._AC_UL640_QL65_ML3_.png", price: 695, rating: {rate: 4.6, count: 400}},
+  {id: 6, title: "Solid Gold Petite Micropave", category: "jewelery", image: "https://fakestoreapi.com/img/61sbMiUnoGL._AC_UL640_QL65_ML3_.png", price: 168, rating: {rate: 3.9, count: 70}},
+  {id: 7, title: "White Gold Plated Princess", category: "jewelery", image: "https://fakestoreapi.com/img/71YAIFU48IL._AC_UL640_QL65_ML3_.png", price: 9.99, rating: {rate: 3, count: 400}},
+  {id: 8, title: "Pierced Owl Rose Gold Plated Earrings", category: "jewelery", image: "https://fakestoreapi.com/img/51UDEzMJVpL._AC_UL640_QL65_ML3_.png", price: 10.99, rating: {rate: 1.9, count: 100}},
+  {id: 9, title: "WD 2TB Elements Portable Hard Drive", category: "electronics", image: "https://fakestoreapi.com/img/61IBBVJvSDL._AC_SY879_.png", price: 64, rating: {rate: 3.3, count: 203}},
+  {id: 10, title: "SanDisk SSD PLUS 1TB Internal SSD", category: "electronics", image: "https://fakestoreapi.com/img/61U7T1koQqL._AC_SX679_.png", price: 109, rating: {rate: 2.9, count: 470}},
+  {id: 11, title: "Silicon Power 256GB SSD 3D NAND", category: "electronics", image: "https://fakestoreapi.com/img/71kWymZ+c+L._AC_SX679_.png", price: 109, rating: {rate: 4.8, count: 319}},
+  {id: 12, title: "WD 4TB Gaming Drive PS4", category: "electronics", image: "https://fakestoreapi.com/img/61mtL65D4cL._AC_SX679_.png", price: 114, rating: {rate: 4.8, count: 400}},
+  {id: 13, title: "Acer SB220Q bi 21.5 inches Full HD IPS", category: "electronics", image: "https://fakestoreapi.com/img/81QpkIctqPL._AC_SX679_.png", price: 599, rating: {rate: 2.9, count: 250}},
+  {id: 14, title: "Samsung 49-Inch CHG90 Curved Gaming Monitor", category: "electronics", image: "https://fakestoreapi.com/img/81Zt42ioCgL._AC_SX679_.png", price: 999.99, rating: {rate: 2.2, count: 140}},
+  {id: 15, title: "BIYLACLESEN Women's Snowboard Jacket", category: "women's clothing", image: "https://fakestoreapi.com/img/51Y5NI-I5jL._AC_UX679_.png", price: 56.99, rating: {rate: 2.6, count: 235}},
+  {id: 16, title: "Lock and Love Women's Removable Hooded Jacket", category: "women's clothing", image: "https://fakestoreapi.com/img/81XH0e8fefL._AC_UY879_.png", price: 29.95, rating: {rate: 2.9, count: 340}},
+  {id: 17, title: "Rain Jacket Women Windbreaker", category: "women's clothing", image: "https://fakestoreapi.com/img/71HblAHs5xL._AC_UY879_-2.png", price: 39.99, rating: {rate: 3.8, count: 679}},
+  {id: 18, title: "MBJ Women's Solid Short Sleeve Boat Neck", category: "women's clothing", image: "https://fakestoreapi.com/img/71z3kpMAYsL._AC_UY879_.png", price: 9.85, rating: {rate: 4.7, count: 130}},
+  {id: 19, title: "Opna Women's Short Sleeve Moisture", category: "women's clothing", image: "https://fakestoreapi.com/img/51eg55uWmdL._AC_UX679_.png", price: 7.95, rating: {rate: 4.5, count: 146}},
+  {id: 20, title: "DANVOUY Womens T Shirt Casual Cotton", category: "women's clothing", image: "https://fakestoreapi.com/img/61pHAEJ4NML._AC_UX679_.png", price: 12.99, rating: {rate: 3.6, count: 145}}
+];
 
-function generateProducts() {
-  const products = [];
-  let id = 1;
-  for (let i = 0; i < 3000; i++) {
-    const brand = brands[i % brands.length];
-    const type = types[i % types.length];
-    const feature = features[i % features.length];
-    const color = colors[i % colors.length];
-    const num = Math.floor(i / brands.length) + 1;
-    
-    const name = `${brand} ${type} ${num}`;
-    const description = `${feature}的${type}，品质保证`;
-    
-    // Category mapping
-    let categoryId = 1;
-    if (['手机', '电脑', '平板', '耳机', '手表', '相机'].includes(type)) categoryId = 101;
-    else if (['跑鞋', '运动鞋', '瑜伽垫'].includes(type)) categoryId = 20101;
-    else if (['T恤', '裤子', '外套'].includes(type)) categoryId = 401;
-    else if (['咖啡', '茶', '零食', '坚果'].includes(type)) categoryId = 301;
-    else if (['小说', '教材'].includes(type)) categoryId = 501;
-    else if (['游戏', '主机'].includes(type)) categoryId = 601;
-    else if (['面霜', '口红', '香水'].includes(type)) categoryId = 70101;
-    else if (['床', '沙发', '桌子', '椅子'].includes(type)) categoryId = 901;
-    else if (type === '汽车') categoryId = 1001;
-    else categoryId = 1 + (i % 10);
-    
-    // Use placeholder with product name
-    const encodedName = encodeURIComponent(`${brand} ${type}`);
-    
-    products.push({
-      id: id++,
-      name: name,
-      description: description,
-      image_url: `https://placehold.co/400x300/${color}/ffffff?text=${encodedName}`,
-      product_url: '',
-      category_id: categoryId,
-      tags: `${type},${brand}`,
-      created_at: new Date(2024, 0, 1 + (i % 365)).toISOString()
-    });
-  }
-  return products;
+// Map to our format
+function mapProducts(fakeProducts) {
+  const categoryMap = {
+    "men's clothing": 401,
+    "women's clothing": 402,
+    "jewelery": 701,
+    "electronics": 601
+  };
+  
+  return fakeProducts.map((p, i) => ({
+    id: i + 1,
+    name: p.title,
+    description: `$${p.price} - Rating: ${p.rating.rate}/5 (${p.rating.count} reviews)`,
+    image_url: p.image,
+    product_url: '',
+    category_id: categoryMap[p.category] || 401,
+    tags: p.category,
+    like_count: Math.floor(p.rating.count * Math.random()),
+    created_at: new Date(2024, 0, 1 + i).toISOString()
+  }));
 }
 
+const products = mapProducts(fakeStoreProducts);
+
 const defaultData = {
-  brands: brands.map((name, i) => ({ id: i+1, name, logo: `https://placehold.co/100x100/4f46e5/ffffff?text=${name.charAt(0)}`, description: name })),
+  brands: [],
   users: [{ id: 1, username: 'demo', password: '123456', is_admin: true, avatar: '', bio: '演示账号', created_at: '2024-01-01T00:00:00.000Z' }],
   categories: categories,
-  products: [],
+  products: products,
   likes: [],
   comments: [],
   favorites: [],
-  nextIds: { users: 2, products: 1 }
+  nextIds: { users: 2, products: products.length + 1 }
 };
 
 let db = { ...defaultData };
@@ -104,7 +99,7 @@ let db = { ...defaultData };
 function genId(type) { const id = db.nextIds[type]++; return id; }
 
 app.get('/api/products', (req, res) => {
-  let products = db.products.map(p => ({ ...p, like_count: Math.floor(Math.random() * 1000), comment_count: Math.floor(Math.random() * 100) }));
+  let products = db.products.map(p => ({ ...p }));
   const { search, category_id, limit } = req.query;
   if (search) { const s = search.toLowerCase(); products = products.filter(p => p.name.toLowerCase().includes(s) || p.tags?.toLowerCase().includes(s)); }
   if (category_id) { products = products.filter(p => p.category_id === parseInt(category_id)); }
@@ -114,7 +109,7 @@ app.get('/api/products', (req, res) => {
 app.get('/api/products/:id', (req, res) => {
   const product = db.products.find(p => p.id === parseInt(req.params.id));
   if (!product) return res.status(404).json({ error: '产品不存在' });
-  res.json({ ...product, like_count: Math.floor(Math.random() * 1000), comment_count: Math.floor(Math.random() * 100) });
+  res.json(product);
 });
 
 app.post('/api/products', (req, res) => {
@@ -166,14 +161,14 @@ app.get('/api/categories/:id', (req, res) => {
   };
   const category = findCategory(db.categories, targetId);
   if (!category) return res.status(404).json({ error: '分类不存在' });
-  const products = db.products.filter(p => p.category_id === category.id).slice(0, 50).map(p => ({ ...p, like_count: Math.floor(Math.random() * 1000) }));
+  const products = db.products.filter(p => p.category_id === category.id);
   res.json({ ...category, products });
 });
 
 app.get('/api/brands', (req, res) => res.json(db.brands));
 app.get('/api/weekly', (req, res) => res.json(db.products.slice(0, 6)));
 app.get('/api/leaderboard', (req, res) => res.json([{ username: 'demo', score: 100 }]));
-app.get('/api/ranking', (req, res) => res.json(db.products.slice(0, 50).map(p => ({ ...p, like_count: Math.floor(Math.random() * 1000) }))));
+app.get('/api/ranking', (req, res) => res.json(db.products));
 app.get('/api/user/:username', (req, res) => {
   const user = db.users.find(u => u.username === req.params.username);
   if (!user) return res.status(404).json({ error: '用户不存在' });
@@ -188,6 +183,6 @@ app.get('/api/compare', (req, res) => {
   const productIds = ids.split(',').map(id => parseInt(id));
   res.json(productIds.map(id => db.products.find(p => p.id === id)).filter(p => p));
 });
-app.get('/api/admin/stats', (req, res) => res.json({ total_users: 1, total_products: 3000, total_likes: 0 }));
+app.get('/api/admin/stats', (req, res) => res.json({ total_users: 1, total_products: products.length, total_likes: 0 }));
 
 module.exports = app;
