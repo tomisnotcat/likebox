@@ -96,8 +96,24 @@ users.forEach((user) => {
   }
 });
 
-const defaultData = {
-  brands: [],
+const brands = [
+  { id: 1, name: 'Apple', category_id: 601, logo: 'https://logo.clearbit.com/apple.com' },
+  { id: 2, name: 'Samsung', category_id: 601, logo: 'https://logo.clearbit.com/samsung.com' },
+  { id: 3, name: 'Sony', category_id: 601, logo: 'https://logo.clearbit.com/sony.com' },
+  { id: 4, name: 'WD', category_id: 601, logo: 'https://logo.clearbit.com/wd.com' },
+  { id: 5, name: 'SanDisk', category_id: 601, logo: 'https://logo.clearbit.com/sandisk.com' },
+  { id: 6, name: 'Acer', category_id: 601, logo: 'https://logo.clearbit.com/acer.com' },
+  { id: 7, name: 'Nike', category_id: 401, logo: 'https://logo.clearbit.com/nike.com' },
+  { id: 8, name: 'Adidas', category_id: 401, logo: 'https://logo.clearbit.com/adidas.com' },
+  { id: 9, name: 'Uniqlo', category_id: 401, logo: 'https://logo.clearbit.com/uniqlo.com' },
+  { id: 10, name: 'Fjallraven', category_id: 401, logo: 'https://logo.clearbit.com/fjallraven.com' },
+  { id: 11, name: 'John Hardy', category_id: 701, logo: 'https://logo.clearbit.com/johnhardy.com' },
+  { id: 12, name: 'BIYLACLESEN', category_id: 402, logo: '' },
+  { id: 13, name: 'Lock and Love', category_id: 402, logo: '' },
+  { id: 14, name: 'MBJ', category_id: 402, logo: '' },
+  { id: 15, name: 'Opna', category_id: 402, logo: '' },
+  { id: 16, name: 'DANVOUY', category_id: 402, logo: '' }
+];
   users: users,
   categories: categories,
   products: products,
@@ -223,7 +239,23 @@ app.get('/api/categories', (req, res, next) => {
 });
 app.get('/api/brands', (req, res, next) => {
   try {
-    res.json([]);
+    // 支持按分类筛选
+    if (req.query.category_id) {
+      const categoryId = parseInt(req.query.category_id);
+      res.json(brands.filter(b => b.category_id === categoryId));
+    } else {
+      res.json(brands);
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get('/api/brands/:id', (req, res, next) => {
+  try {
+    const brand = brands.find(b => b.id === parseInt(req.params.id));
+    if (!brand) return res.status(404).json({ error: '品牌不存在' });
+    res.json(brand);
   } catch (err) {
     next(err);
   }
