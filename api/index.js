@@ -5,7 +5,6 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 
-// Generate products programmatically
 const categories = [
   { id: 1, name: '数码', children: [
     { id: 101, name: '手机', children: [{ id: 10101, name: '智能手机' }, { id: 10102, name: '老人机' }] },
@@ -41,66 +40,68 @@ const categories = [
   { id: 10, name: '汽车', children: [] }
 ];
 
-const brands = ['Apple', 'Samsung', 'Huawei', 'Xiaomi', 'OPPO', 'vivo', 'Sony', 'Nike', 'Adidas', 'Puma', 'NewBalance', 'UnderArmour', 'IKEA', 'MUJI', 'Zara', 'H&M', 'Uniqlo', 'Starbucks', 'Tesla', 'BYD', 'NIO', 'LiAuto', 'BMW', 'Mercedes'];
-
-const productTemplates = [
-  { name: '{brand} {type}', desc: '高品质{adj}，{feature}' },
-  { name: '{brand} Pro', desc: '专业版，{feature}' },
-  { name: '{brand} {color}', desc: '{adj}款式，限时优惠' },
-  { name: '{brand} 旗舰款', desc: '顶级配置，{feature}' },
-  { name: '{brand} 青春版', desc: '性价比之选，{adj}' }
-];
-
-const colors = ['黑色', '白色', '银色', '金色', '蓝色', '绿色', '红色', '紫色', '粉色', '灰色'];
-const types = ['手机', '电脑', '平板', '耳机', '手表', '音箱', '相机', '耳机', '键盘', '鼠标', '显示器', '充电宝', '数据线', '充电器'];
-const adjs = ['高性能', '高品质', '超薄', '轻便', '耐用', '时尚', '经典', '智能', '便携', '专业'];
-const features = ['超长续航', '高清摄像', '快速充电', '防水防尘', 'AI智能', '5G全网通', '高清屏显', '降噪技术', '环绕音效'];
+const brandLogos = {
+  'Apple': 'https://logo.clearbit.com/apple.com',
+  'Samsung': 'https://logo.clearbit.com/samsung.com',
+  'Huawei': 'https://logo.clearbit.com/huawei.com',
+  'Xiaomi': 'https://logo.clearbit.com/xiaomi.com',
+  'OPPO': 'https://logo.clearbit.com/oppo.com',
+  'vivo': 'https://logo.clearbit.com/vivo.com',
+  'Sony': 'https://logo.clearbit.com/sony.com',
+  'Nike': 'https://logo.clearbit.com/nike.com',
+  'Adidas': 'https://logo.clearbit.com/adidas.com',
+  'Puma': 'https://logo.clearbit.com/puma.com',
+  'NewBalance': 'https://logo.clearbit.com/newbalance.com',
+  'UnderArmour': 'https://logo.clearbit.com/underarmour.com',
+  'IKEA': 'https://logo.clearbit.com/ikea.com',
+  'MUJI': 'https://logo.clearbit.com/muji.com',
+  'Zara': 'https://logo.clearbit.com/zara.com',
+  'HM': 'https://logo.clearbit.com/hm.com',
+  'Uniqlo': 'https://logo.clearbit.com/uniqlo.com',
+  'Starbucks': 'https://logo.clearbit.com/starbucks.com',
+  'Tesla': 'https://logo.clearbit.com/tesla.com',
+  'BYD': 'https://logo.clearbit.com/byd.com',
+  'NIO': 'https://logo.clearbit.com/nio.com',
+  'LiAuto': 'https://logo.clearbit.com/lixiang.com',
+  'BMW': 'https://logo.clearbit.com/bmw.com',
+  'Mercedes': 'https://logo.clearbit.com/mercedes-benz.com'
+};
 
 function generateProducts() {
   const products = [];
-  let id = 1;
+  const brands = Object.keys(brandLogos);
+  const types = ['手机', '电脑', '平板', '耳机', '手表', '音箱', '相机', '键盘', '鼠标', '显示器', '充电宝', '数据线', '充电器', '跑鞋', '运动鞋', '瑜伽垫', 'T恤', '裤子', '外套', '咖啡', '茶', '零食', '坚果', '小说', '教材', '游戏', '主机', '面霜', '口红', '香水', '床', '沙发', '桌子', '椅子', '净化器', '汽车'];
+  const features = ['高性能', '高品质', '超薄', '轻便', '耐用', '时尚', '经典', '智能', '便携', '专业'];
   
-  // Generate 3000 products
+  let id = 1;
   for (let i = 0; i < 3000; i++) {
     const brand = brands[i % brands.length];
     const type = types[i % types.length];
-    const template = productTemplates[i % productTemplates.length];
-    const color = colors[i % colors.length];
-    const adj = adjs[i % adjs.length];
     const feature = features[i % features.length];
     
-    const name = template.name
-      .replace('{brand}', brand)
-      .replace('{type}', type)
-      .replace('{color}', color);
+    const name = `${brand} ${type} ${Math.floor(i / brands.length) + 1}`;
+    const description = `${feature}的${type}，品质保证`;
     
-    const description = template.desc
-      .replace('{adj}', adj)
-      .replace('{feature}', feature);
-    
-    // Flatten categories for random selection
-    const flatCats = [];
-    categories.forEach(cat => {
-      flatCats.push({ id: cat.id, name: cat.name });
-      if (cat.children) {
-        cat.children.forEach(child => {
-          flatCats.push({ id: child.id, name: child.name });
-          if (child.children) {
-            child.children.forEach(sub => flatCats.push({ id: sub.id, name: sub.name }));
-          }
-        });
-      }
-    });
-    
-    const cat = flatCats[i % flatCats.length];
+    // Get category based on type
+    let categoryId = 1;
+    if (['手机', '电脑', '平板', '耳机', '手表', '相机'].includes(type)) categoryId = 101;
+    else if (['跑鞋', '运动鞋', '瑜伽垫'].includes(type)) categoryId = 20101;
+    else if (['T恤', '裤子', '外套'].includes(type)) categoryId = 401;
+    else if (['咖啡', '茶', '零食', '坚果'].includes(type)) categoryId = 301;
+    else if (['小说', '教材'].includes(type)) categoryId = 501;
+    else if (['游戏', '主机'].includes(type)) categoryId = 601;
+    else if (['面霜', '口红', '香水'].includes(type)) categoryId = 70101;
+    else if (['床', '沙发', '桌子', '椅子'].includes(type)) categoryId = 901;
+    else if (type === '汽车') categoryId = 1001;
+    else categoryId = 1 + (i % 10);
     
     products.push({
       id: id++,
-      name: `${brand} ${type} ${i+1}`,
+      name: name,
       description: description,
-      image_url: `https://picsum.photos/seed/${brand}${i}/400/300`,
+      image_url: brandLogos[brand] || 'https://via.placeholder.com/400x300?text=Product',
       product_url: '',
-      category_id: cat.id,
+      category_id: categoryId,
       tags: `${type},${brand}`,
       created_at: new Date(2024, 0, 1 + (i % 365)).toISOString()
     });
@@ -110,7 +111,7 @@ function generateProducts() {
 }
 
 const defaultData = {
-  brands: [],
+  brands: Object.entries(brandLogos).map(([name, logo], i) => ({ id: i+1, name, logo, description: name })),
   users: [{ id: 1, username: 'demo', password: '123456', is_admin: true, avatar: '', bio: '演示账号', created_at: '2024-01-01T00:00:00.000Z' }],
   categories: categories,
   products: generateProducts(),
