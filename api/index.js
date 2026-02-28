@@ -738,3 +738,152 @@ app.get('/api/admin/reports', (req, res) => {
   res.json(reports);
 });
 
+
+// Membership system
+app.post('/api/membership/upgrade', async (req, res) => {
+  const { username, plan } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  const plans = { 'monthly': 30, 'yearly': 365, 'lifetime': 9999 };
+  const days = plans[plan] || 30;
+  
+  user.membership = {
+    plan,
+    expires: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
+    features: ['no_ads', 'unlimited_uploads', 'priority_support', 'analytics']
+  };
+  await saveDB();
+  
+  res.json({ success: true, expires: user.membership.expires });
+});
+
+app.get('/api/membership', (req, res) => {
+  const { username } = req.query;
+  const user = db.users.find(u => u.username === username);
+  if (!user || !user.membership) return res.json({ active: false });
+  
+  const active = new Date(user.membership.expires) > new Date();
+  res.json({ active, ...user.membership });
+});
+
+// Community posts
+app.post('/api/posts', async (req, res) => {
+  const { username, title, content, images } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  const post = {
+    id: db.posts.length + 1,
+    user_id: user.id,
+    username: user.username,
+    title,
+    content,
+    images: images || [],
+    likes: [],
+    created_at: new Date().toISOString()
+  };
+  db.posts.push(post);
+  await saveDB();
+  res.json(post);
+});
+
+app.get('/api/posts', (req, res) => {
+  const posts = db.posts.map(p => ({
+    ...p,
+    like_count: p.likes?.length || 0,
+    comment_count: (db.post_comments || []).filter(c => c.post_id === p.id).length
+  })).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  res.json(posts);
+});
+
+app.post('/api/posts/:id/like', async (req, res) => {
+  const { username } = req.body;
+  const postId = parseInt(req.params.id);
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  const post = db.posts.find(p => p.id === postId);
+  if (!post) return res.status(404).json({ error: '帖子不存在' });
+  
+  if (!post.likes) post.likes = [];
+  const idx = post.likes.indexOf(user.id);
+  if (idx >= 0) post.likes.splice(idx, 1);
+  else post.likes.push(user.id);
+  
+  await saveDB();
+  res.json({ liked: idx < 0, count: post.likes.length });
+});
+
+app.get('/api/posts/:id/comments', (req, res) => {
+  const postId = parseInt(req.params.id);
+  const comments = (db.post_comments || []).filter(c => c.post_id === postId).map(c => {
+    const user = db.users.find(u => u.id === c.user_id);
+    return { ...c, username: user?.username };
+  });
+  res.json(comments);
+});
+
+app.post('/api/posts/:id/comments', async (req, res) => {
+  const { username, content } = req.body;
+  const postId = parseInt(req.params.id);
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  if (!db.post_comments) db.post_comments = [];
+  const comment = { id: db.post_comments.length + 1, post_id: postId, user_id: user.id, content, created_at: new Date().toISOString() };
+  db.post_comments.push(comment);
+  await saveDB();
+  res.json({ ...comment, username: user.username });
+});
+
+// Events
+app.get('/api/events', (req, res) => {
+  const events = [
+    { id: 1, title: '春季新品大赏', description: '春季新品首发，限时优惠', start: '2024-03-01', end: '2024-03-31', banner: 'https://picsum.photos/seed/event1/800/200' },
+    { id: 2, title: '夏日清凉季', description: '消暑神器专场', start: '2024-06-01', end: '2024-08-31', banner: 'https://picsum.photos/seed/event2/800/200' },
+    { id: 3, title: '双十一狂欢', description: '全年最低价', start: '2024-11-11', end: '2024-11-12', banner: 'https://picsum.photos/seed/event3/800/200' }
+  ];
+  res.json(events);
+});
+
+// Data export
+app.get('/api/export', (req, res) => {
+  const { username } = req.query;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  const data = {
+    profile: { username: user.username, created_at: user.created_at, points: user.points || 0 },
+    products: db.products.filter(p => p.user_id === user.id),
+    likes: db.likes.filter(l => l.user_id === user.id),
+    favorites: db.favorites.filter(f => f.user_id === user.id),
+    comments: db.comments.filter(c => c.user_id === user.id)
+  };
+  
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', 'attachment; filename=data.json');
+  res.json(data);
+});
+
+// Real name verification (simplified)
+app.post('/api/verify', async (req, res) => {
+  const { username, real_name, id_card } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  // In production, integrate with official verification service
+  user.verified = { real_name, status: 'pending', submitted_at: new Date().toISOString() };
+  await saveDB();
+  
+  res.json({ success: true, message: '提交成功，审核中' });
+});
+
+app.get('/api/verify/status', (req, res) => {
+  const { username } = req.query;
+  const user = db.users.find(u => u.username === username);
+  if (!user || !user.verified) return res.json({ status: 'none' });
+  res.json(user.verified);
+});
+
+// module.exports = app;
