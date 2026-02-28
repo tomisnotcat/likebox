@@ -29,6 +29,10 @@
         <main class="max-w-6xl mx-auto px-4 py-6">
             <div class="mb-6 flex flex-wrap gap-3 items-center">
                 <input v-model="search" @keyup.enter="loadProducts" type="text" placeholder="搜索产品..." class="px-4 py-2 border rounded-lg w-64">
+                <select v-model="brandId" @change="loadProducts" class="px-4 py-2 border rounded-lg">
+                    <option :value="null">全部品牌</option>
+                    <option v-for="brand in brands" :key="brand.id" :value="brand.id">{{ brand.name }}</option>
+                </select>
                 <select v-model="categoryId" @change="loadProducts" class="px-4 py-2 border rounded-lg">
                     <option :value="null">全部分类</option>
                     <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
@@ -190,7 +194,7 @@
                     currentUser: localStorage.getItem('username') || null,
                     currentUserId: null,
                     isAdmin: false,
-                    products: [], categories: [], comments: [], tags: [],
+                    products: [], categories: [], brands: [], brandId: null, comments: [], tags: [],
                     selectedProduct: null,
                     showLogin: false, showAddProduct: false, showRanking: false, showProductRanking: false, showProfile: false,
                     ranking: [], productRanking: [], myProducts: [], myFavorites: [],
@@ -204,7 +208,7 @@
             mounted() {
                 this.loadCategories();
                 this.loadProducts();
-                this.loadTags();
+                this.loadTags(); this.loadBrands();
                 this.checkUser();
                 const urlParams = new URLSearchParams(window.location.search);
                 const productId = urlParams.get('product');
@@ -220,9 +224,11 @@
                 goHome() { this.selectedProduct = null; this.categoryId = null; this.search = ''; this.loadProducts(); window.history.pushState({}, '', '/'); },
                 async loadCategories() { this.categories = await (await fetch('/api/categories')).json(); },
                 async loadTags() { this.tags = await (await fetch('/api/tags')).json(); },
+                async loadBrands() { this.brands = await (await fetch('/api/brands')).json(); },
                 async loadProducts() {
                     const params = new URLSearchParams();
                     if (this.categoryId) params.append('category_id', this.categoryId);
+                    if (this.brandId) params.append('brand_id', this.brandId);
                     if (this.search) params.append('search', this.search);
                     params.append('sort', this.sort);
                     if (this.currentUser) params.append('username', this.currentUser);

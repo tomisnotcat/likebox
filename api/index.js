@@ -7,6 +7,16 @@ app.use(cors());
 app.use(express.json());
 
 const defaultData = {
+  brands: [
+    { id: 1, name: 'Apple', logo: 'https://logo.clearbit.com/apple.com', description: '苹果公司' },
+    { id: 2, name: 'Sony', logo: 'https://logo.clearbit.com/sony.com', description: '索尼' },
+    { id: 3, name: 'Nintendo', logo: 'https://logo.clearbit.com/nintendo.com', description: '任天堂' },
+    { id: 4, name: 'Nike', logo: 'https://logo.clearbit.com/nike.com', description: '耐克' },
+    { id: 5, name: 'Starbucks', logo: 'https://logo.clearbit.com/starbucks.com', description: '星巴克' },
+    { id: 6, name: ' Dyson', logo: 'https://logo.clearbit.com/dyson.com', description: '戴森' },
+    { id: 7, name: 'SK-II', logo: 'https://logo.clearbit.com/sk-ii.com', description: 'SK-II' },
+    { id: 8, name: 'lululemon', logo: 'https://logo.clearbit.com/lululemon.com', description: '露露乐蒙' }
+  ],
   users: [
     { id: 1, username: 'demo', password: '123456', is_admin: true, avatar: '', bio: '', created_at: '2024-01-01T00:00:00.000Z' }
   ],
@@ -45,7 +55,7 @@ const defaultData = {
   notifications: [],
   follows: [],
   history: [],
-  nextIds: { users: 2, products: 13, likes: 4, comments: 4, comment_likes: 1, favorites: 1, reports: 1, notifications: 1, follows: 1, history: 1 }
+  nextIds: { users: 2, brands: 9, products: 13, likes: 4, comments: 4, comment_likes: 1, favorites: 1, reports: 1, notifications: 1, follows: 1, history: 1 }
 };
 
 let db;
@@ -150,6 +160,24 @@ app.put('/api/user', async (req, res) => {
 // 分类列表
 app.get('/api/categories', (req, res) => res.json(db.categories));
 
+// Brand list
+app.get('/api/brands', (req, res) => {
+  const { brand_id } = req.query;
+  let brands = db.brands || [];
+  if (brand_id) {
+    brands = brands.filter(b => b.id === parseInt(brand_id));
+  }
+  // Add product count
+  brands = brands.map(b => ({
+    ...b,
+    product_count: db.products.filter(p => {
+      const tags = (p.tags || '').toLowerCase();
+      return tags.includes(b.name.toLowerCase());
+    }).length
+  }));
+  res.json(brands);
+});
+
 // 产品列表
 app.get('/api/products', (req, res) => {
   const { category_id, search, sort, username, tag } = req.query;
@@ -165,7 +193,15 @@ app.get('/api/products', (req, res) => {
     products = products.filter(p => p.tags && p.tags.toLowerCase().includes(t));
   }
   
-  products = products.map(p => ({ ...p, like_count: db.likes.filter(l => l.product_id === p.id).length }));
+  products = products.map(p => {
+    const like_count = db.likes.filter(l => l.product_id === p.id).length;
+    // Detect brand
+    let brand_id = null;
+    const tagsLower = (p.tags || '').toLowerCase();
+    const brand = (db.brands || []).find(b => tagsLower.includes(b.name.toLowerCase()));
+    if (brand) brand_id = brand.id;
+    return { ...p, like_count, brand_id };
+  });
   if (sort === 'popular') products.sort((a, b) => b.like_count - a.like_count);
   else products.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   
