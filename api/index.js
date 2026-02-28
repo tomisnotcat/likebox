@@ -85,12 +85,54 @@ const defaultData = {
     { id: 25, name: '戴森吸尘器V15', description: '强劲吸力，激光探测，LCD显示', image_url: 'https://picsum.photos/seed/dysonv15/400/300', product_url: 'https://www.dyson.com', category_id: 902, tags: '清洁,戴森', created_at: '2024-05-15T10:00:00.000Z' },
     // 汽车
     { id: 26, name: '特斯拉Model 3', description: '纯电动，智能驾驶，超长续航', image_url: 'https://picsum.photos/seed/tesla3/400/300', product_url: 'https://www.tesla.com', category_id: 1001, tags: '汽车,特斯拉', created_at: '2024-05-20T10:00:00.000Z' },
-    { id: 27, name: '比亚迪汉EV', description: '国产旗舰电动，智能座舱', image_url: 'https://picsum.photos/seed/bydhan/400/300', product_url: 'https://www.byd.com', category_id: 1001, tags: '汽车,比亚迪', created_at: '2024-05-25T10:00:00.000Z' }
+    { id: 27, name: '比亚迪汉EV', description: '国产旗舰电动，智能座舱', image_url: 'https://picsum.photos/seed/bydhan/400/300', product_url: 'https://www.byd.com', category_id: 1001, tags: '汽车,比亚迪', created_at: '2024-05-25T10:00:00.000Z' },
+    // More 数码 products
+    { id: 28, name: '三星 Galaxy S24 Ultra', description: 'AI手机，钛金属边框，SPen手写笔', image_url: 'https://picsum.photos/seed/samsungs24/400/300', product_url: 'https://www.samsung.com', category_id: 101, tags: '手机,三星', created_at: '2024-06-01T10:00:00.000Z' },
+    { id: 29, name: 'OPPO Find X7 Pro', description: '天玑9300处理器，哈苏影像', image_url: 'https://picsum.photos/seed/oppox7/400/300', product_url: 'https://www.oppo.com', category_id: 101, tags: '手机,OPPO', created_at: '2024-06-05T10:00:00.000Z' },
+    { id: 30, name: 'vivo X100 Pro', description: '蔡司光学镜头，120W闪充', image_url: 'https://picsum.photos/seed/vivox100/400/300', product_url: 'https://www.vivo.com', category_id: 101, tags: '手机,vivo', created_at: '2024-06-10T10:00:00.000Z' },
+    { id: 31, name: ' ROG游戏本', description: 'ROG游戏本', image_url: 'https://picsum.photos/seed/rog/400/300', product_url: 'https://www.asus.com', category_id: 10201, tags: '电脑,ROG', created_at: '2024-06-15T10:00:00.000Z' },
+    { id: 32, name: '华为 FreeBuds Pro 3', description: '空间音频，智慧降噪', image_url: 'https://picsum.photos/seed/huaweifreebuds/400/300', product_url: 'https://www.huawei.com', category_id: 10301, tags: '耳机,华为', created_at: '2024-06-20T10:00:00.000Z' },
+    { id: 33, name: ' Bose QuietComfort', description: '顶级降噪，舒适佩戴', image_url: 'https://picsum.photos/seed/boseqc/400/300', product_url: 'https://www.bose.com', category_id: 10302, tags: '耳机,Bose', created_at: '2024-06-25T10:00:00.000Z' },
+    // More 运动 products
+    { id: 34, name: 'New Balance 574', description: '经典复古，舒适缓震', image_url: 'https://picsum.photos/seed/nb574/400/300', product_url: 'https://www.newbalance.com', category_id: 20101, tags: '跑鞋,NewBalance', created_at: '2024-07-01T10:00:00.000Z' },
+    { id: 35, name: 'Under Armour跑鞋', description: '轻量透气，Energy Return', image_url: 'https://picsum.photos/seed/ua/400/300', product_url: 'https://www.underarmour.com', category_id: 20101, tags: '跑鞋,UA', created_at: '2024-07-05T10:00:00.000Z' },
+    { id: 36, name: 'Nike瑜伽裤', description: '高弹面料，裸感体验', image_url: 'https://picsum.photos/seed/nikelegging/400/300', product_url: 'https://www.nike.com', category_id: 20202, tags: '瑜伽,Nike', created_at: '2024-07-10T10:00:00.000Z' },
+    { id: 37, name: '健身哑铃套装', description: '可调节重量，家庭健身', image_url: 'https://picsum.photos/seed/dumbbell/400/300', product_url: '', category_id: 20301, tags: '健身,器材', created_at: '2024-07-15T10:00:00.000Z' },
+    // More 食品 products
+    { id: 38, name: '瑞幸生椰拿铁', description: '椰浆+浓缩咖啡，清爽不腻', image_url: 'https://picsum.photos/seed/luckin/400/300', product_url: 'https://www.luckincoffee.com', category_id: 30101, tags: '咖啡,瑞幸', created_at: '2024-07-20T10:00:00.000Z' },
+    { id: 39, name: '农夫山泉气泡水', description: '0糖0脂，白桃口味', image_url: 'https://picsum.photos/seed/bubble/400/300', product_url: 'https://www.nfsg.com', category_id: 30102, tags: '饮料,气泡水', created_at: '2024-07-25T10:00:00.000Z' },
+    { id: 40, name: '三只松鼠坚果礼盒', description: '混合坚果，营养丰富', image_url: 'https://picsum.photos/seed/nuts/400/300', product_url: 'https://www.3songshu.com', category_id: 30201, tags: '零食,坚果', created_at: '2024-08-01T10:00:00.000Z' },
+    // More 服饰 products
+    { id: 41, name: 'Zara条纹衬衫', description: '韩版宽松，休闲百搭', image_url: 'https://picsum.photos/seed/zara/400/300', product_url: 'https://www.zara.com', category_id: 40101, tags: 'T恤,Zara', created_at: '2024-08-05T10:00:00.000Z' },
+    { id: 42, name: 'H&M牛仔裤', description: '直筒剪裁，经典水洗', image_url: 'https://picsum.photos/seed/hmjeans/400/300', product_url: 'https://www.hm.com', category_id: 40201, tags: '牛仔裤,H&M', created_at: '2024-08-10T10:00:00.000Z' },
+    // More 图书 products
+    { id: 43, name: '《流浪地球》', description: '刘慈欣科幻，春节档电影原著', image_url: 'https://picsum.photos/seed/wandering/400/300', product_url: '', category_id: 501, tags: '小说,科幻', created_at: '2024-08-15T10:00:00.000Z' },
+    { id: 44, name: '《人类简史》', description: '尤瓦尔赫拉利经典著作', image_url: 'https://picsum.photos/seed/sapiens/400/300', product_url: '', category_id: 501, tags: '历史,科普', created_at: '2024-08-20T10:00:00.000Z' },
+    { id: 45, name: '新概念英语全套', description: '经典英语教材', image_url: 'https://picsum.photos/seed/nce/400/300', product_url: '', category_id: 50201, tags: '英语,新概念', created_at: '2024-08-25T10:00:00.000Z' },
+    // More 游戏 products
+    { id: 46, name: 'Xbox Series X', description: '4K 120fps，光线追踪', image_url: 'https://picsum.photos/seed/xboxsx/400/300', product_url: 'https://www.xbox.com', category_id: 60102, tags: '主机,Xbox', created_at: '2024-09-01T10:00:00.000Z' },
+    { id: 47, name: '塞尔达传说：王国之泪', description: '开放世界神作', image_url: 'https://picsum.photos/seed/totk/400/300', product_url: 'https://www.nintendo.com', category_id: 602, tags: '游戏,塞尔达', created_at: '2024-09-05T10:00:00.000Z' },
+    { id: 48, name: '艾尔登法环', description: '魂系巅峰之作', image_url: 'https://picsum.photos/seed/eldenring/400/300', product_url: 'https://www.fromsoftware.com', category_id: 602, tags: '游戏,魂系', created_at: '2024-09-10T10:00:00.000Z' },
+    // More 美妆 products
+    { id: 49, name: 'La Mer面霜', description: '海蓝之谜，修护神器', image_url: 'https://picsum.photos/seed/lamer/400/300', product_url: 'https://www.lamer.com', category_id: 70101, tags: '护肤,LaMer', created_at: '2024-09-15T10:00:00.000Z' },
+    { id: 50, name: 'YSL口红', description: '经典方管，持久滋润', image_url: 'https://picsum.photos/seed/ysl/400/300', product_url: 'https://www.ysl.com', category_id: 702, tags: '彩妆,YSL', created_at: '2024-09-20T10:00:00.000Z' },
+    // More 家居 products
+    { id: 51, name: 'IKEA帕克鲁床垫', description: '乳胶弹簧，舒适支撑', image_url: 'https://picsum.photos/seed/ikeamat/400/300', product_url: 'https://www.ikea.com', category_id: 90101, tags: '床垫,宜家', created_at: '2024-09-25T10:00:00.000Z' },
+    { id: 52, name: '戴森空气净化器', description: '除甲醛净化，智能监测', image_url: 'https://picsum.photos/seed/dysonpur/400/300', product_url: 'https://www.dyson.com', category_id: 90201, tags: '净化,戴森', created_at: '2024-10-01T10:00:00.000Z' },
+    { id: 53, name: '小米空气净化器', description: '性价比之选，智能互联', image_url: 'https://picsum.photos/seed/xiaomiair/400/300', product_url: 'https://www.mi.com', category_id: 90201, tags: '净化,小米', created_at: '2024-10-05T10:00:00.000Z' },
+    // More 汽车 products
+    { id: 54, name: '蔚来ET5', description: '国产高端电动，激光雷达', image_url: 'https://picsum.photos/seed/nioet5/400/300', product_url: 'https://www.nio.com', category_id: 1001, tags: '汽车,蔚来', created_at: '2024-10-10T10:00:00.000Z' },
+    { id: 55, name: '理想L9', description: '大型SUV，家庭首选', image_url: 'https://picsum.photos/seed/lixiangl9/400/300', product_url: 'https://www.lixiang.com', category_id: 1001, tags: '汽车,理想', created_at: '2024-10-15T10:00:00.000Z' },
+    { id: 56, name: '宝马iX3', description: '豪华品牌电动，续航可靠', image_url: 'https://picsum.photos/seed/bmwix3/400/300', product_url: 'https://www.bmw.com', category_id: 1001, tags: '汽车,宝马', created_at: '2024-10-20T10:00:00.000Z' },
+    { id: 57, name: '问界M9', description: '华为赋能，智能座舱', image_url: 'https://picsum.photos/seed/m9/400/300', product_url: 'https://www.aito.com', category_id: 1001, tags: '汽车,问界', created_at: '2024-10-25T10:00:00.000Z' },
+    // More 运动 - 健身
+    { id: 58, name: '筋膜枪', description: '肌肉放松，深层按摩', image_url: 'https://picsum.photos/seed/massage/400/300', product_url: '', category_id: 20301, tags: '健身,放松', created_at: '2024-11-01T10:00:00.000Z' },
+    { id: 59, name: 'Keep智能跳绳', description: '无绳设计，精准计数', image_url: 'https://picsum.photos/seed/keepjump/400/300', product_url: 'https://www.gotokeep.com', category_id: 20302, tags: '健身,跳绳', created_at: '2024-11-05T10:00:00.000Z' }
   ],
   likes: [],
   comments: [],
   favorites: [],
-  nextIds: { users: 2, brands: 1, products: 28, likes: 1, comments: 1, favorites: 1 }
+  nextIds: { users: 2, brands: 1, products: 60, likes: 1, comments: 1, favorites: 1 }
 };
 
 let db = { ...defaultData };
