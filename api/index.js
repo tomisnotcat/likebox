@@ -497,7 +497,7 @@ app.get('/api/ranking', (req, res) => {
 });
 
 // 产品排行榜
-app.get('/api/products/ranking', (req, res) => {
+app.get('/api/products/top', (req, res) => {
   const { category_id } = req.query;
   let products = [...db.products];
   

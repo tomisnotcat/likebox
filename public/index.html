@@ -391,7 +391,7 @@
                 async loadProductRanking() {
                     const params = new URLSearchParams();
                     if (this.rankingCategoryId) params.append('category_id', this.rankingCategoryId);
-                    this.productRanking = await (await fetch('/api/products/ranking?' + params)).json();
+                    this.productRanking = await (await fetch('/api/products/top?' + params)).json();
                 },
                 async loadUserData() {
                     if (!this.currentUser) return;
