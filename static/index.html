@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LikeBox - 为喜欢的产品点赞</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="app">
+        <!-- 导航栏 -->
+        <nav class="bg-white shadow-sm sticky top-0 z-50">
+            <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+                <h1 class="text-xl font-bold text-indigo-600 cursor-pointer" @click="showHome">
+                    <i class="fas fa-heart"></i> LikeBox
+                </h1>
+                
+                <div class="flex items-center gap-4">
+                    <div v-if="currentUser" class="flex items-center gap-3">
+                        <span class="text-gray-600">👤 {{ currentUser }}</span>
+                        <button @click="logout" class="text-sm text-gray-500 hover:text-gray-700">退出</button>
+                    </div>
+                    <button v-else @click="showLogin = true" class="text-indigo-600 hover:text-indigo-800">登录</button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容 -->
+        <main class="max-w-6xl mx-auto px-4 py-6">
+            <!-- 搜索和筛选 -->
+            <div class="mb-6 flex flex-wrap gap-3 items-center">
+                <input 
+                    v-model="search" 
+                    @keyup.enter="loadProducts"
+                    type="text" 
+                    placeholder="搜索产品..." 
+                    class="px-4 py-2 border rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                
+                <select v-model="categoryId" @change="loadProducts" class="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option :value="null">全部分类</option>
+                    <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                </select>
+                
+                <select v-model="sort" @change="loadProducts" class="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="latest">最新</option>
+                    <option value="popular">最热</option>
+                </select>
+                
+                <button @click="showAddProduct = true" class="ml-auto bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+                    <i class="fas fa-plus"></i> 添加产品
+                </button>
+            </div>
+
+            <!-- 产品列表 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div 
+                    v-for="product in products" 
+                    :key="product.id"
+                    class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer overflow-hidden"
+                    @click="viewProduct(product)"
+                >
+                    <div v-if="product.image_url" class="h-48 bg-gray-200">
+                        <img :src="product.image_url" class="w-full h-full object-cover">
+                    </div>
+                    <div v-else class="h-48 bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
+                        <i class="fas fa-box text-4xl text-indigo-300"></i>
+                    </div>
+                    
+                    <div class="p-4">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <h3 class="font-semibold text-lg text-gray-800">{{ product.name }}</h3>
+                                <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{ product.description }}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 flex items-center justify-between">
+                            <span class="text-xs text-gray-400">
+                                {{ formatDate(product.created_at) }}
+                            </span>
+                            <button 
+                                @click.stop="toggleLike(product)"
+                                class="flex items-center gap-1 px-3 py-1 rounded-full transition-colors"
+                                :class="product.is_liked ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                            >
+                                <i class="fas fa-heart" :class="product.is_liked ? 'fa-solid' : 'fa-regular'"></i>
+                                <span class="text-sm">{{ product.like_count }}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="products.length === 0" class="text-center py-12 text-gray-400">
+                <i class="fas fa-inbox text-4xl mb-3"></i>
+                <p>暂无产品，快来添加吧！</p>
+            </div>
+        </main>
+
+        <!-- 登录/注册弹窗 -->
+        <div v-if="showLogin" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showLogin = false">
+            <div class="bg-white rounded-xl p-6 w-96">
+                <h2 class="text-xl font-bold mb-4">{{ isRegister ? '注册' : '登录' }}</h2>
+                
+                <input 
+                    v-model="authForm.username"
+                    type="text" 
+                    placeholder="用户名" 
+                    class="w-full px-4 py-2 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                <input 
+                    v-model="authForm.password"
+                    type="password" 
+                    placeholder="密码" 
+                    class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    @keyup.enter="auth"
+                >
+                
+                <button @click="auth" class="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 mb-3">
+                    {{ isRegister ? '注册' : '登录' }}
+                </button>
+                
+                <p class="text-center text-sm text-gray-500">
+                    {{ isRegister ? '已有账号？' : '没有账号？' }}
+                    <a href="#" @click.prevent="isRegister = !isRegister" class="text-indigo-600">
+                        {{ isRegister ? '去登录' : '去注册' }}
+                    </a>
+                </p>
+            </div>
+        </div>
+
+        <!-- 添加产品弹窗 -->
+        <div v-if="showAddProduct" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showAddProduct = false">
+            <div class="bg-white rounded-xl p-6 w-full max-w-lg">
+                <h2 class="text-xl font-bold mb-4">添加产品</h2>
+                
+                <input 
+                    v-model="productForm.name"
+                    type="text" 
+                    placeholder="产品名称" 
+                    class="w-full px-4 py-2 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                <textarea 
+                    v-model="productForm.description"
+                    placeholder="产品描述" 
+                    rows="3"
+                    class="w-full px-4 py-2 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                ></textarea>
+                <input 
+                    v-model="productForm.image_url"
+                    type="text" 
+                    placeholder="图片URL（可选）" 
+                    class="w-full px-4 py-2 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                <select 
+                    v-model="productForm.category_id"
+                    class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                    <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                </select>
+                
+                <div class="flex gap-3">
+                    <button @click="showAddProduct = false" class="flex-1 border py-2 rounded-lg hover:bg-gray-50">
+                        取消
+                    </button>
+                    <button @click="addProduct" class="flex-1 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700">
+                        添加
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 产品详情弹窗 -->
+        <div v-if="selectedProduct" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="selectedProduct = null">
+            <div class="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div v-if="selectedProduct.image_url" class="h-64 bg-gray-200">
+                    <img :src="selectedProduct.image_url" class="w-full h-full object-cover">
+                </div>
+                
+                <div class="p-6">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-800">{{ selectedProduct.name }}</h2>
+                            <p class="text-sm text-gray-500 mt-1">{{ formatDate(selectedProduct.created_at) }}</p>
+                        </div>
+                        <button 
+                            @click="toggleLike(selectedProduct)"
+                            class="flex items-center gap-2 px-4 py-2 rounded-full transition-colors"
+                            :class="selectedProduct.is_liked ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                        >
+                            <i class="fas fa-heart text-lg" :class="selectedProduct.is_liked ? 'fa-solid' : 'fa-regular'"></i>
+                            <span>{{ selectedProduct.like_count }}</span>
+                        </button>
+                    </div>
+                    
+                    <p class="mt-4 text-gray-700">{{ selectedProduct.description }}</p>
+                    
+                    <!-- 评论 -->
+                    <div class="mt-6 border-t pt-4">
+                        <h3 class="font-semibold mb-3">评论 ({{ comments.length }})</h3>
+                        
+                        <div v-if="currentUser" class="mb-4 flex gap-2">
+                            <input 
+                                v-model="newComment"
+                                @keyup.enter="submitComment"
+                                type="text" 
+                                placeholder="写评论..." 
+                                class="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                            <button @click="submitComment" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                                发表
+                            </button>
+                        </div>
+                        
+                        <div class="space-y-3">
+                            <div v-for="comment in comments" :key="comment.id" class="bg-gray-50 rounded-lg p-3">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="font-medium text-sm">{{ comment.username }}</span>
+                                    <span class="text-xs text-gray-400">{{ formatDate(comment.created_at) }}</span>
+                                </div>
+                                <p class="text-gray-700">{{ comment.content }}</p>
+                            </div>
+                            
+                            <p v-if="comments.length === 0" class="text-gray-400 text-center py-4">暂无评论</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+        
+        createApp({
+            data() {
+                return {
+                    currentUser: localStorage.getItem('username') || null,
+                    products: [],
+                    categories: [],
+                    comments: [],
+                    selectedProduct: null,
+                    showLogin: false,
+                    showAddProduct: false,
+                    isRegister: false,
+                    search: '',
+                    categoryId: null,
+                    sort: 'latest',
+                    authForm: { username: '', password: '' },
+                    productForm: { name: '', description: '', image_url: '', category_id: 1 },
+                    newComment: ''
+                }
+            },
+            mounted() {
+                this.loadCategories();
+                this.loadProducts();
+            },
+            methods: {
+                async loadCategories() {
+                    const res = await fetch('/api/categories');
+                    this.categories = await res.json();
+                },
+                async loadProducts() {
+                    const params = new URLSearchParams();
+                    if (this.categoryId) params.append('category_id', this.categoryId);
+                    if (this.search) params.append('search', this.search);
+                    params.append('sort', this.sort);
+                    if (this.currentUser) params.append('username', this.currentUser);
+                    
+                    const res = await fetch(`/api/products?${params}`);
+                    this.products = await res.json();
+                },
+                async auth() {
+                    const endpoint = this.isRegister ? '/api/register' : '/api/login';
+                    const res = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(this.authForm)
+                    });
+                    
+                    if (!res.ok) {
+                        const err = await res.json();
+                        alert(err.detail || '操作失败');
+                        return;
+                    }
+                    
+                    const data = await res.json();
+                    this.currentUser = this.isRegister ? data.username : data.username;
+                    localStorage.setItem('username', this.currentUser);
+                    this.showLogin = false;
+                    this.authForm = { username: '', password: '' };
+                    this.loadProducts();
+                },
+                logout() {
+                    this.currentUser = null;
+                    localStorage.removeItem('username');
+                    this.loadProducts();
+                },
+                async addProduct() {
+                    if (!this.currentUser) {
+                        alert('请先登录');
+                        return;
+                    }
+                    
+                    const res = await fetch('/api/products', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(this.productForm)
+                    });
+                    
+                    if (res.ok) {
+                        this.showAddProduct = false;
+                        this.productForm = { name: '', description: '', image_url: '', category_id: 1 };
+                        this.loadProducts();
+                    }
+                },
+                async viewProduct(product) {
+                    this.selectedProduct = { ...product };
+                    await this.loadComments(product.id);
+                },
+                async loadComments(productId) {
+                    const res = await fetch(`/api/products/${productId}/comments`);
+                    this.comments = await res.json();
+                },
+                async toggleLike(product) {
+                    if (!this.currentUser) {
+                        this.showLogin = true;
+                        return;
+                    }
+                    
+                    const res = await fetch(`/api/products/${product.id}/like?username=${this.currentUser}`, {
+                        method: 'POST'
+                    });
+                    
+                    const data = await res.json();
+                    product.like_count = data.count;
+                    product.is_liked = data.liked;
+                    
+                    if (this.selectedProduct && this.selectedProduct.id === product.id) {
+                        this.selectedProduct.like_count = data.count;
+                        this.selectedProduct.is_liked = data.liked;
+                    }
+                },
+                async submitComment() {
+                    if (!this.newComment.trim()) return;
+                    
+                    const res = await fetch('/api/comments', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            product_id: this.selectedProduct.id,
+                            content: this.newComment
+                        })
+                    });
+                    
+                    if (res.ok) {
+                        this.newComment = '';
+                        await this.loadComments(this.selectedProduct.id);
+                    }
+                },
+                showHome() {
+                    this.selectedProduct = null;
+                    this.loadProducts();
+                },
+                formatDate(dateStr) {
+                    const d = new Date(dateStr);
+                    return d.toLocaleDateString('zh-CN');
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
