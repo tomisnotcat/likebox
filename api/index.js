@@ -180,10 +180,25 @@ app.get('/api/brands', (req, res) => {
 
 // 产品列表
 app.get('/api/products', (req, res) => {
-  const { category_id, search, sort, username, tag } = req.query;
+  const { category_id, brand_id, search, sort, username, tag } = req.query;
   let products = [...db.products];
   
   if (category_id) products = products.filter(p => p.category_id == category_id);
+  if (brand_id) products = products.filter(p => {
+    const tagsLower = (p.tags || '').toLowerCase();
+    const brand = (db.brands || []).find(b => b.id === parseInt(brand_id));
+    if (!brand) return false;
+    const nameLower = brand.name.toLowerCase();
+    if (nameLower === 'apple' && tagsLower.includes('苹果')) return true;
+    if (nameLower === 'sony' && tagsLower.includes('索尼')) return true;
+    if (nameLower === 'nintendo' && tagsLower.includes('任天堂')) return true;
+    if (nameLower === 'nike' && tagsLower.includes('nike')) return true;
+    if (nameLower === 'starbucks' && tagsLower.includes('星巴克')) return true;
+    if (nameLower === 'dyson' && tagsLower.includes('戴森')) return true;
+    if (nameLower === 'sk-ii' && tagsLower.includes('sk-ii')) return true;
+    if (nameLower === 'lululemon' && tagsLower.includes('lululemon')) return true;
+    return tagsLower.includes(nameLower);
+  });
   if (search) {
     const s = search.toLowerCase();
     products = products.filter(p => p.name.toLowerCase().includes(s) || (p.tags && p.tags.toLowerCase().includes(s)));
@@ -487,6 +502,21 @@ app.get('/api/products/ranking', (req, res) => {
   let products = [...db.products];
   
   if (category_id) products = products.filter(p => p.category_id == category_id);
+  if (brand_id) products = products.filter(p => {
+    const tagsLower = (p.tags || '').toLowerCase();
+    const brand = (db.brands || []).find(b => b.id === parseInt(brand_id));
+    if (!brand) return false;
+    const nameLower = brand.name.toLowerCase();
+    if (nameLower === 'apple' && tagsLower.includes('苹果')) return true;
+    if (nameLower === 'sony' && tagsLower.includes('索尼')) return true;
+    if (nameLower === 'nintendo' && tagsLower.includes('任天堂')) return true;
+    if (nameLower === 'nike' && tagsLower.includes('nike')) return true;
+    if (nameLower === 'starbucks' && tagsLower.includes('星巴克')) return true;
+    if (nameLower === 'dyson' && tagsLower.includes('戴森')) return true;
+    if (nameLower === 'sk-ii' && tagsLower.includes('sk-ii')) return true;
+    if (nameLower === 'lululemon' && tagsLower.includes('lululemon')) return true;
+    return tagsLower.includes(nameLower);
+  });
   
   const ranking = products.map(p => ({
     id: p.id,
