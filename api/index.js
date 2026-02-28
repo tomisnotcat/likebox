@@ -32,10 +32,99 @@ const defaultData = {
     { id: 1, username: 'demo', password: '123456', is_admin: true, avatar: '', bio: '', created_at: '2024-01-01T00:00:00.000Z' }
   ],
   categories: [
-    { id: 1, name: '数码' }, { id: 2, name: '生活' }, { id: 3, name: '食品' },
-    { id: 4, name: '服饰' }, { id: 5, name: '图书' }, { id: 6, name: '游戏' },
-    { id: 7, name: '美妆' }, { id: 8, name: '运动' }, { id: 9, name: '家居' },
-    { id: 10, name: '汽车' }, { id: 11, name: '旅游' }, { id: 12, name: '教育' }
+    { id: 1, name: '数码', children: [
+      { id: 101, name: '手机', children: [
+        { id: 10101, name: '智能手机' },
+        { id: 10102, name: '老人机' }
+      ]},
+      { id: 102, name: '电脑', children: [
+        { id: 10201, name: '笔记本电脑' },
+        { id: 10202, name: '台式机' }
+      ]},
+      { id: 103, name: '耳机', children: [
+        { id: 10301, name: '蓝牙耳机' },
+        { id: 10302, name: '头戴式耳机' }
+      ]},
+      { id: 104, name: '平板', children: [
+        { id: 10401, name: 'iPad' },
+        { id: 10402, name: '安卓平板' }
+      ]},
+      { id: 105, name: '智能穿戴', children: [
+        { id: 10501, name: '智能手表' },
+        { id: 10502, name: '智能手环' }
+      ]}
+    ]},
+    { id: 2, name: '运动', children: [
+      { id: 201, name: '跑步', children: [
+        { id: 20101, name: '跑鞋' },
+        { id: 20102, name: '运动服' }
+      ]},
+      { id: 202, name: '瑜伽', children: [
+        { id: 20201, name: '瑜伽垫' },
+        { id: 20202, name: '瑜伽服' }
+      ]},
+      { id: 203, name: '健身', children: [
+        { id: 20301, name: '健身器材' },
+        { id: 20302, name: '蛋白粉' }
+      ]}
+    ]},
+    { id: 3, name: '食品', children: [
+      { id: 301, name: '饮料', children: [
+        { id: 30101, name: '咖啡' },
+        { id: 30102, name: '茶' },
+        { id: 30103, name: '奶茶' }
+      ]},
+      { id: 302, name: '零食', children: [
+        { id: 30201, name: '坚果' },
+        { id: 30202, name: '饼干' }
+      ]}
+    ]},
+    { id: 4, name: '服饰', children: [
+      { id: 401, name: 'T恤', children: [
+        { id: 40101, name: '纯棉T恤' },
+        { id: 40102, name: '运动T恤' }
+      ]},
+      { id: 402, name: '裤子', children: [
+        { id: 40201, name: '牛仔裤' },
+        { id: 40202, name: '运动裤' }
+      ]}
+    ]},
+    { id: 5, name: '图书', children: [
+      { id: 501, name: '小说', children: [] },
+      { id: 502, name: '教育', children: [
+        { id: 50201, name: '英语' },
+        { id: 50202, name: '考试' }
+      ]}
+    ]},
+    { id: 6, name: '游戏', children: [
+      { id: 601, name: '主机', children: [
+        { id: 60101, name: 'Switch' },
+        { id: 60102, name: 'PS5' },
+        { id: 60103, name: 'Xbox' }
+      ]},
+      { id: 602, name: '游戏软件', children: [] }
+    ]},
+    { id: 7, name: '美妆', children: [
+      { id: 701, name: '护肤品', children: [
+        { id: 70101, name: '面霜' },
+        { id: 70102, name: '精华' }
+      ]},
+      { id: 702, name: '彩妆', children: [] }
+    ]},
+    { id: 9, name: '家居', children: [
+      { id: 901, name: '家具', children: [
+        { id: 90101, name: '床' },
+        { id: 90102, name: '沙发' }
+      ]},
+      { id: 902, name: '小家电', children: [
+        { id: 90201, name: '香薰机' },
+        { id: 90202, name: '加湿器' }
+      ]}
+    ]},
+    { id: 10, name: '汽车', children: [
+      { id: 1001, name: '电动车', children: [] },
+      { id: 1002, name: '燃油车', children: [] }
+    ]}
   ],
   products: [
     { id: 1, name: 'iPhone 15 Pro', description: '钛金属设计，A17 Pro芯片，专业相机系统', image_url: 'https://picsum.photos/seed/iphone/400/300', product_url: 'https://www.apple.com/shop/buy-iphone/iphone-15-pro', category_id: 1, user_id: 1, tags: '手机,苹果,数码', created_at: '2024-01-15T10:00:00.000Z' },
@@ -101,6 +190,18 @@ function genId(type) {
   return id;
 }
 
+// Flatten categories for filtering
+function flattenCategories(categories, parentId = null) {
+  let result = [];
+  categories.forEach(cat => {
+    result.push({ id: cat.id, name: cat.name, parent_id: parentId });
+    if (cat.children && cat.children.length > 0) {
+      result = result.concat(flattenCategories(cat.children, cat.id));
+    }
+  });
+  return result;
+}
+
 // Products
 app.get('/api/products', (req, res) => {
   let products = db.products.map(p => ({
@@ -115,7 +216,32 @@ app.get('/api/products', (req, res) => {
     const s = search.toLowerCase();
     products = products.filter(p => p.name.toLowerCase().includes(s) || p.tags?.toLowerCase().includes(s));
   }
-  if (category_id) products = products.filter(p => p.category_id === parseInt(category_id));
+  if (category_id) {
+    const flatCats = flattenCategories(db.categories);
+    const targetId = parseInt(category_id);
+    // Get category and all its children
+    const getChildIds = (cats, pid) => {
+      let ids = [pid];
+      cats.forEach(c => {
+        if (c.id === pid && c.children) {
+          c.children.forEach(child => {
+            ids = ids.concat(getChildIds(cats, child.id));
+            if (child.children) {
+              child.children.forEach(sub => ids.push(sub.id));
+            }
+          });
+        }
+        if (c.children) {
+          c.children.forEach(child => {
+            if (child.id === pid) ids = ids.concat(getChildIds(c.children, child.id));
+          });
+        }
+      });
+      return ids;
+    };
+    const allIds = getChildIds(db.categories, targetId);
+    products = products.filter(p => allIds.includes(p.category_id));
+  }
   if (brand_id) products = products.filter(p => p.brand_id === parseInt(brand_id));
   res.json(products.sort((a, b) => b.like_count - a.like_count));
 });
@@ -230,9 +356,32 @@ app.post('/api/login', (req, res) => {
 app.get('/api/categories', (req, res) => res.json(db.categories));
 
 app.get('/api/categories/:id', (req, res) => {
-  const category = db.categories.find(c => c.id === parseInt(req.params.id));
+  const targetId = parseInt(req.params.id);
+  const findCategory = (cats, id) => {
+    for (const cat of cats) {
+      if (cat.id === id) return cat;
+      if (cat.children) {
+        const found = findCategory(cat.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+  const category = findCategory(db.categories, targetId);
   if (!category) return res.status(404).json({ error: '分类不存在' });
-  const products = db.products.filter(p => p.category_id === category.id).map(p => ({ ...p, like_count: db.likes.filter(l => l.product_id === p.id).length }));
+  
+  // Get all product IDs in this category and subcategories
+  const getAllProductIds = (cat) => {
+    let ids = [cat.id];
+    if (cat.children) {
+      cat.children.forEach(child => {
+        ids = ids.concat(getAllProductIds(child));
+      });
+    }
+    return ids;
+  };
+  const allIds = getAllProductIds(category);
+  const products = db.products.filter(p => allIds.includes(p.category_id)).map(p => ({ ...p, like_count: db.likes.filter(l => l.product_id === p.id).length }));
   res.json({ ...category, products });
 });
 
