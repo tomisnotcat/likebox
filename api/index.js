@@ -887,3 +887,180 @@ app.get('/api/verify/status', (req, res) => {
 });
 
 // module.exports = app;
+
+// Customer service / Messages
+app.post('/api/messages', async (req, res) => {
+  const { username, content } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  if (!db.messages) db.messages = [];
+  const msg = { id: db.messages.length + 1, user_id: user.id, username: user.username, content, read: false, created_at: new Date().toISOString() };
+  db.messages.push(msg);
+  await saveDB();
+  res.json(msg);
+});
+
+app.get('/api/messages', (req, res) => {
+  const { username, admin } = req.query;
+  if (admin === 'true') {
+    const user = db.users.find(u => u.username === username);
+    if (!user || !user.is_admin) return res.status(403).json({ error: '无权限' });
+    return res.json(db.messages || []);
+  }
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.json([]);
+  const messages = (db.messages || []).filter(m => m.user_id === user.id);
+  res.json(messages);
+});
+
+app.put('/api/messages/:id/read', async (req, res) => {
+  const { username } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user || !user.is_admin) return res.status(403).json({ error: '无权限' });
+  
+  const msg = (db.messages || []).find(m => m.id === parseInt(req.params.id));
+  if (msg) { msg.read = true; await saveDB(); }
+  res.json({ success: true });
+});
+
+// Favorite collections
+app.post('/api/collections', async (req, res) => {
+  const { username, name } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  if (!db.collections) db.collections = [];
+  const collection = { id: db.collections.length + 1, user_id: user.id, name, products: [], created_at: new Date().toISOString() };
+  db.collections.push(collection);
+  await saveDB();
+  res.json(collection);
+});
+
+app.get('/api/collections', (req, res) => {
+  const { username } = req.query;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.json([]);
+  
+  const collections = (db.collections || []).filter(c => c.user_id === user.id).map(c => ({
+    ...c,
+    products: c.products.map(id => db.products.find(p => p.id === id)).filter(p => p)
+  }));
+  res.json(collections);
+});
+
+app.post('/api/collections/:id/add', async (req, res) => {
+  const { username, product_id } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  const collection = (db.collections || []).find(c => c.id === parseInt(req.params.id) && c.user_id === user.id);
+  if (!collection) return res.status(404).json({ error: '收藏夹不存在' });
+  
+  if (!collection.products.includes(product_id)) {
+    collection.products.push(product_id);
+    await saveDB();
+  }
+  res.json({ success: true });
+});
+
+// Product update notifications
+app.post('/api/follow-product', async (req, res) => {
+  const { username, product_id } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  if (!db.product_follows) db.product_follows = [];
+  const existing = db.product_follows.find(f => f.user_id === user.id && f.product_id === product_id);
+  if (existing) {
+    db.product_follows = db.product_follows.filter(f => f !== existing);
+    await saveDB();
+    return res.json({ followed: false });
+  }
+  db.product_follows.push({ user_id: user.id, product_id, created_at: new Date().toISOString() });
+  await saveDB();
+  res.json({ followed: true });
+});
+
+app.get('/api/follow-product/:id', (req, res) => {
+  const { username } = req.query;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.json({ followed: false });
+  
+  const followed = (db.product_follows || []).some(f => f.user_id === user.id && f.product_id === parseInt(req.params.id));
+  res.json({ followed });
+});
+
+// Analytics / Trends
+app.get('/api/analytics/trends', (req, res) => {
+  const { days } = req.query;
+  const since = Date.now() - (parseInt(days) || 7) * 24 * 60 * 60 * 1000;
+  
+  const likes = (db.likes || []).filter(l => new Date(l.created_at).getTime() > since);
+  const comments = (db.comments || []).filter(c => new Date(c.created_at).getTime() > since);
+  const products = (db.products || []).filter(p => new Date(p.created_at).getTime() > since);
+  
+  const dailyStats = {};
+  for (let i = 0; i < (parseInt(days) || 7); i++) {
+    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000).toDateString();
+    dailyStats[d] = { likes: 0, comments: 0, products: 0 };
+  }
+  
+  likes.forEach(l => { const d = new Date(l.created_at).toDateString(); if (dailyStats[d]) dailyStats[d].likes++; });
+  comments.forEach(c => { const d = new Date(c.created_at).toDateString(); if (dailyStats[d]) dailyStats[d].comments++; });
+  products.forEach(p => { const d = new Date(p.created_at).toDateString(); if (dailyStats[d]) dailyStats[d].products++; });
+  
+  res.json({ daily: Object.entries(dailyStats).reverse().map(([date, stats]) => ({ date, ...stats })), summary: { total_likes: likes.length, total_comments: comments.length, total_products: products.length } });
+});
+
+app.get('/api/analytics/top', (req, res) => {
+  const { type, limit } = req.query;
+  const n = parseInt(limit) || 10;
+  
+  if (type === 'products') {
+    const top = (db.products || []).map(p => ({
+      id: p.id, name: p.name,
+      likes: (db.likes || []).filter(l => l.product_id === p.id).length,
+      comments: (db.comments || []).filter(c => c.product_id === p.id).length
+    })).sort((a, b) => b.likes - a.likes).slice(0, n);
+    return res.json(top);
+  }
+  
+  if (type === 'users') {
+    const top = {};
+    (db.likes || []).forEach(l => { top[l.user_id] = (top[l.user_id] || 0) + 1; });
+    const sorted = Object.entries(top).sort((a, b) => b[1] - a[1]).slice(0, n).map(([userId, count]) => {
+      const u = db.users.find(user => user.id === parseInt(userId));
+      return { user_id: userId, username: u?.username, likes: count };
+    });
+    return res.json(sorted);
+  }
+  
+  res.json({ error: 'Invalid type' });
+});
+
+// Yearly report
+app.get('/api/report/yearly', (req, res) => {
+  const { username } = req.query;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  const year = new Date().getFullYear();
+  const userProducts = (db.products || []).filter(p => p.user_id === user.id && new Date(p.created_at).getFullYear() === year);
+  const userLikes = (db.likes || []).filter(l => l.user_id === user.id && new Date(l.created_at).getFullYear() === year);
+  const userComments = (db.comments || []).filter(c => c.user_id === user.id && new Date(c.created_at).getFullYear() === year);
+  const userFavorites = (db.favorites || []).filter(f => f.user_id === user.id);
+  
+  res.json({
+    year,
+    username: user.username,
+    products_added: userProducts.length,
+    likes_given: userLikes.length,
+    comments_made: userComments.length,
+    products_favorited: userFavorites.length,
+    points_earned: user.points || 0,
+    rank: (db.users || []).filter(u => (u.points || 0) > (user.points || 0)).length + 1
+  });
+});
+
+// module.exports = app;
