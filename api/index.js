@@ -1263,3 +1263,167 @@ app.get('/api/achievements/check', (req, res) => {
 });
 
 // module.exports = app;
+
+// Emoji support in comments
+const emojiMap = { '开心': '😊', '喜欢': '❤️', '点赞': '👍', '哈哈': '😂', '惊讶': '😮', '难过': '😢', '生气': '😠', '爱心': '💕' };
+function addEmoji(content) {
+  if (!content) return content;
+  let result = content;
+  Object.entries(emojiMap).forEach(([key, emoji]) => {
+    result = result.replace(new RegExp('\\[' + key + '\\]', 'g'), emoji);
+  });
+  return result;
+}
+
+// Mention support (@username)
+function parseMentions(content) {
+  const mentions = content.match(/@(\w+)/g) || [];
+  return mentions.map(m => m.slice(1));
+}
+
+// Update comment to support emoji and mentions
+app.post('/api/comments', async (req, res) => {
+  const { product_id, content, username } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  const filteredContent = filterContent(content);
+  const finalContent = addEmoji(filteredContent);
+  const mentions = parseMentions(finalContent);
+  
+  const comment = { id: db.comments.length + 1, user_id: user.id, product_id, content: finalContent, mentions, created_at: new Date().toISOString() };
+  db.comments.push(comment);
+  
+  // Notify mentioned users
+  mentions.forEach(mentionedUser => {
+    const target = db.users.find(u => u.username === mentionedUser);
+    if (target && target.id !== user.id) {
+      if (!db.notifications) db.notifications = [];
+      db.notifications.push({ user_id: target.id, type: 'mention', content: `${user.username} 在评论中提到了你`, read: false, created_at: new Date().toISOString() });
+    }
+  });
+  
+  await saveDB();
+  res.json({ ...comment, username: user.username, like_count: 0, is_liked: false, replies: [] });
+});
+
+// Product comparison - detailed version
+app.get('/api/compare', (req, res) => {
+  const { ids } = req.query;
+  if (!ids) return res.json([]);
+  
+  const productIds = ids.split(',').map(id => parseInt(id));
+  const products = productIds.map(id => {
+    const p = db.products.find(prod => prod.id === id);
+    if (!p) return null;
+    return {
+      ...p,
+      like_count: db.likes.filter(l => l.product_id === p.id).length,
+      comment_count: db.comments.filter(c => c.product_id === p.id).length,
+      category: db.categories.find(c => c.id === p.category_id)?.name
+    };
+  }).filter(p => p);
+  
+  res.json(products);
+});
+
+// Paid sticky / promotion
+app.post('/api/products/:id/promote', async (req, res) => {
+  const { username, days } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  if ((user.points || 0) < days * 100) return res.status(400).json({ error: '积分不足' });
+  
+  const productId = parseInt(req.params.id);
+  const product = db.products.find(p => p.id === productId);
+  if (!product) return res.status(404).json({ error: '产品不存在' });
+  
+  user.points -= days * 100;
+  product.promoted = true;
+  product.promote_expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+  
+  await saveDB();
+  res.json({ success: true, expires: product.promote_expires });
+});
+
+// Get promoted products
+app.get('/api/promoted', (req, res) => {
+  const now = new Date().toISOString();
+  const promoted = db.products
+    .filter(p => p.promoted && p.promote_expires > now)
+    .map(p => ({ ...p, like_count: db.likes.filter(l => l.product_id === p.id).length }))
+    .sort((a, b) => new Date(b.promote_expires) - new Date(a.promote_expires));
+  res.json(promoted);
+});
+
+// Invite system
+app.post('/api/invite', async (req, res) => {
+  const { username } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  const code = Math.random().toString(36).slice(2, 10).toUpperCase();
+  user.invite_code = code;
+  user.invites = user.invites || 0;
+  await saveDB();
+  
+  res.json({ code, url: '?invite=' + code });
+});
+
+app.post('/api/invite/use', async (req, res) => {
+  const { invite_code, new_username, password } = req.body;
+  const inviter = db.users.find(u => u.invite_code === invite_code);
+  if (!inviter) return res.status(404).json({ error: '邀请码无效' });
+  
+  if (db.users.find(u => u.username === new_username)) return res.status(400).json({ error: '用户名已存在' });
+  
+  const newUser = { id: db.users.length + 1, username: new_username, password, is_admin: false, points: 50, invited_by: inviter.id, created_at: new Date().toISOString() };
+  db.users.push(newUser);
+  
+  inviter.invites = (inviter.invites || 0) + 1;
+  inviter.points = (inviter.points || 0) + 100;
+  
+  await saveDB();
+  res.json({ success: true, bonus: 50 });
+});
+
+// Points mall / exchange
+const mallItems = [
+  { id: 1, name: 'VIP月卡', points: 300, image: '', stock: 100 },
+  { id: 2, name: '头像框(7天)', points: 100, image: '', stock: 999 },
+  { id: 3, name: '积分+50', points: 200, image: '', stock: 9999 },
+  { id: 4, name: '首页推荐(1天)', points: 500, image: '', stock: 10 }
+];
+
+app.get('/api/mall', (req, res) => {
+  res.json(mallItems);
+});
+
+app.post('/api/mall/buy', async (req, res) => {
+  const { username, item_id } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  const item = mallItems.find(i => i.id === item_id);
+  if (!item) return res.status(404).json({ error: '商品不存在' });
+  
+  if ((user.points || 0) < item.points) return res.status(400).json({ error: '积分不足' });
+  
+  user.points -= item.points;
+  
+  if (!user.items) user.items = [];
+  user.items.push({ item_id: item.id, name: item.name, bought_at: new Date().toISOString() });
+  
+  await saveDB();
+  res.json({ success: true, remaining_points: user.points });
+});
+
+app.get('/api/mall/my', (req, res) => {
+  const { username } = req.query;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.json([]);
+  res.json(user.items || []);
+});
+
+// module.exports = app;
