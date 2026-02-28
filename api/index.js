@@ -16,18 +16,18 @@ const defaultData = {
     { id: 7, name: '其他' }
   ],
   products: [
-    { id: 1, name: 'iPhone 15 Pro', description: '钛金属设计，A17 Pro芯片，专业相机系统', image_url: 'https://picsum.photos/seed/iphone/400/300', product_url: 'https://www.apple.com/shop/buy-iphone/iphone-15-pro', category_id: 1, created_at: '2024-01-15T10:00:00.000Z' },
-    { id: 2, name: 'MacBook Air M3', description: '轻薄便携，续航超长，M3芯片强劲性能', image_url: 'https://picsum.photos/seed/macbook/400/300', product_url: 'https://www.apple.com/shop/buy-mac/macbook-air-13-and-15-m3', category_id: 1, created_at: '2024-01-20T10:00:00.000Z' },
-    { id: 3, name: 'AirPods Pro 2', description: '主动降噪，空间音频，MagSafe充电盒', image_url: 'https://picsum.photos/seed/airpods/400/300', product_url: 'https://www.apple.com/shop/product/MQXG3AM/A/airpods-pro-2nd-generation', category_id: 1, created_at: '2024-01-25T10:00:00.000Z' },
-    { id: 4, name: '戴森吸尘器 V15', description: '强劲吸力，激光探测，LCD显示屏', image_url: 'https://picsum.photos/seed/dyson/400/300', product_url: '', category_id: 2, created_at: '2024-02-01T10:00:00.000Z' },
-    { id: 5, name: 'SK-II 神仙水', description: '护肤精华液，改善肌肤状态的神器', image_url: 'https://picsum.photos/seed/sk2/400/300', product_url: '', category_id: 2, created_at: '2024-02-05T10:00:00.000Z' },
-    { id: 6, name: '星巴克随行杯', description: '不锈钢保温杯，创意设计，环保又时尚', image_url: 'https://picsum.photos/seed/starbucks/400/300', product_url: '', category_id: 3, created_at: '2024-02-10T10:00:00.000Z' },
-    { id: 7, name: 'Nintendo Switch', description: '家用掌机新概念，多人同乐必备', image_url: 'https://picsum.photos/seed/switch/400/300', product_url: 'https://www.nintendo.com/switch/', category_id: 6, created_at: '2024-02-15T10:00:00.000Z' },
-    { id: 8, name: '索尼 PS5', description: '下一代游戏主机，4K画质，沉浸式体验', image_url: 'https://picsum.photos/seed/ps5/400/300', product_url: 'https://www.playstation.com/ps5/', category_id: 6, created_at: '2024-02-20T10:00:00.000Z' },
-    { id: 9, name: '《三体》全套', description: '刘慈欣科幻巨著，值得反复阅读', image_url: 'https://picsum.photos/seed/santi/400/300', product_url: '', category_id: 5, created_at: '2024-02-25T10:00:00.000Z' },
-    { id: 10, name: 'lululemon瑜伽裤', description: '高弹面料，舒适透气，时尚运动风', image_url: 'https://picsum.photos/seed/lulu/400/300', product_url: '', category_id: 4, created_at: '2024-03-01T10:00:00.000Z' },
-    { id: 11, name: 'Air Jordan 1', description: '经典篮球鞋，潮流百搭神器', image_url: 'https://picsum.photos/seed/jordan/400/300', product_url: '', category_id: 4, created_at: '2024-03-05T10:00:00.000Z' },
-    { id: 12, name: 'Apple Watch S9', description: '智能手表，健康监测，时尚配件', image_url: 'https://picsum.photos/seed/watch/400/300', product_url: 'https://www.apple.com/watch/', category_id: 1, created_at: '2024-03-10T10:00:00.000Z' }
+    { id: 1, name: 'iPhone 15 Pro', description: '钛金属设计，A17 Pro芯片，专业相机系统', image_url: 'https://picsum.photos/seed/iphone/400/300', product_url: 'https://www.apple.com/shop/buy-iphone/iphone-15-pro', category_id: 1, user_id: 1, created_at: '2024-01-15T10:00:00.000Z' },
+    { id: 2, name: 'MacBook Air M3', description: '轻薄便携，续航超长，M3芯片强劲性能', image_url: 'https://picsum.photos/seed/macbook/400/300', product_url: 'https://www.apple.com/shop/buy-mac/macbook-air-13-and-15-m3', category_id: 1, user_id: 1, created_at: '2024-01-20T10:00:00.000Z' },
+    { id: 3, name: 'AirPods Pro 2', description: '主动降噪，空间音频，MagSafe充电盒', image_url: 'https://picsum.photos/seed/airpods/400/300', product_url: 'https://www.apple.com/shop/product/MQXG3AM/A/airpods-pro-2nd-generation', category_id: 1, user_id: 1, created_at: '2024-01-25T10:00:00.000Z' },
+    { id: 4, name: '戴森吸尘器 V15', description: '强劲吸力，激光探测，LCD显示屏', image_url: 'https://picsum.photos/seed/dyson/400/300', product_url: '', category_id: 2, user_id: 1, created_at: '2024-02-01T10:00:00.000Z' },
+    { id: 5, name: 'SK-II 神仙水', description: '护肤精华液，改善肌肤状态的神器', image_url: 'https://picsum.photos/seed/sk2/400/300', product_url: '', category_id: 2, user_id: 1, created_at: '2024-02-05T10:00:00.000Z' },
+    { id: 6, name: '星巴克随行杯', description: '不锈钢保温杯，创意设计，环保又时尚', image_url: 'https://picsum.photos/seed/starbucks/400/300', product_url: '', category_id: 3, user_id: 1, created_at: '2024-02-10T10:00:00.000Z' },
+    { id: 7, name: 'Nintendo Switch', description: '家用掌机新概念，多人同乐必备', image_url: 'https://picsum.photos/seed/switch/400/300', product_url: 'https://www.nintendo.com/switch/', category_id: 6, user_id: 1, created_at: '2024-02-15T10:00:00.000Z' },
+    { id: 8, name: '索尼 PS5', description: '下一代游戏主机，4K画质，沉浸式体验', image_url: 'https://picsum.photos/seed/ps5/400/300', product_url: 'https://www.playstation.com/ps5/', category_id: 6, user_id: 1, created_at: '2024-02-20T10:00:00.000Z' },
+    { id: 9, name: '《三体》全套', description: '刘慈欣科幻巨著，值得反复阅读', image_url: 'https://picsum.photos/seed/santi/400/300', product_url: '', category_id: 5, user_id: 1, created_at: '2024-02-25T10:00:00.000Z' },
+    { id: 10, name: 'lululemon瑜伽裤', description: '高弹面料，舒适透气，时尚运动风', image_url: 'https://picsum.photos/seed/lulu/400/300', product_url: '', category_id: 4, user_id: 1, created_at: '2024-03-01T10:00:00.000Z' },
+    { id: 11, name: 'Air Jordan 1', description: '经典篮球鞋，潮流百搭神器', image_url: 'https://picsum.photos/seed/jordan/400/300', product_url: '', category_id: 4, user_id: 1, created_at: '2024-03-05T10:00:00.000Z' },
+    { id: 12, name: 'Apple Watch S9', description: '智能手表，健康监测，时尚配件', image_url: 'https://picsum.photos/seed/watch/400/300', product_url: 'https://www.apple.com/watch/', category_id: 1, user_id: 1, created_at: '2024-03-10T10:00:00.000Z' }
   ],
   likes: [
     { id: 1, user_id: 1, product_id: 1, created_at: '2024-01-16T10:00:00.000Z' },
@@ -121,7 +121,11 @@ app.get('/api/products', (req, res) => {
 });
 
 app.post('/api/products', async (req, res) => {
-  const { name, description, image_url, product_url, category_id } = req.body;
+  const { name, description, image_url, product_url, category_id, username } = req.body;
+  
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
   const product = { 
     id: genId('products'), 
     name, 
@@ -129,6 +133,7 @@ app.post('/api/products', async (req, res) => {
     image_url: image_url || null, 
     product_url: product_url || null,
     category_id, 
+    user_id: user.id,
     created_at: new Date().toISOString() 
   };
   db.products.push(product);
@@ -163,6 +168,21 @@ app.post('/api/comments', async (req, res) => {
   db.comments.push(comment);
   await saveDB();
   res.json({ ...comment, username: user.username });
+});
+
+// 用户产品数量排名
+app.get('/api/ranking', (req, res) => {
+  const ranking = db.users.map(u => ({
+    username: u.username,
+    product_count: db.products.filter(p => p.user_id === u.id).length,
+    like_count: db.likes.filter(l => {
+      const userProducts = db.products.filter(p => p.user_id === u.id).map(p => p.id);
+      return userProducts.includes(l.product_id);
+    }).length
+  }));
+  
+  ranking.sort((a, b) => b.product_count - a.product_count);
+  res.json(ranking);
 });
 
 module.exports = app;

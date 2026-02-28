@@ -18,6 +18,9 @@
                 </h1>
                 
                 <div class="flex items-center gap-4">
+                    <button @click="showRanking = true; loadRanking()" class="text-gray-600 hover:text-indigo-600">
+                        <i class="fas fa-trophy"></i> 排行榜
+                    </button>
                     <div v-if="currentUser" class="flex items-center gap-3">
                         <span class="text-gray-600">👤 {{ currentUser }}</span>
                         <button @click="logout" class="text-sm text-gray-500 hover:text-gray-700">退出</button>
@@ -257,6 +260,41 @@
                 </div>
             </div>
         </div>
+
+        <!-- 排行榜弹窗 -->
+        <div v-if="showRanking" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showRanking = false">
+            <div class="bg-white rounded-xl p-6 w-full max-w-md">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold">
+                        <i class="fas fa-trophy text-yellow-500"></i> 贡献排行榜
+                    </h2>
+                    <button @click="showRanking = false" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="space-y-3">
+                    <div v-for="(user, index) in ranking" :key="user.username" 
+                         class="flex items-center gap-3 p-3 rounded-lg"
+                         :class="index === 0 ? 'bg-yellow-50' : index === 1 ? 'bg-gray-50' : index === 2 ? 'bg-orange-50' : 'bg-gray-50'">
+                        <span class="w-8 text-center font-bold" 
+                              :class="index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-orange-400' : 'text-gray-500'">
+                            {{ index + 1 }}
+                        </span>
+                        <div class="flex-1">
+                            <div class="font-medium">{{ user.username }}</div>
+                            <div class="text-xs text-gray-500">
+                                <span class="text-indigo-600">{{ user.product_count }} 个产品</span>
+                                <span class="ml-2 text-red-500">{{ user.like_count }} 个赞</span>
+                            </div>
+                        </div>
+                        <i v-if="index === 0" class="fas fa-crown text-yellow-500"></i>
+                    </div>
+                    
+                    <p v-if="ranking.length === 0" class="text-gray-400 text-center py-4">暂无数据</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -270,8 +308,9 @@
                     categories: [],
                     comments: [],
                     selectedProduct: null,
-                    showLogin: false,
                     showAddProduct: false,
+                    showRanking: false,
+                    ranking: [],
                     isRegister: false,
                     search: '',
                     categoryId: null,
@@ -299,6 +338,10 @@
                     
                     const res = await fetch(`/api/products?${params}`);
                     this.products = await res.json();
+                },
+                async loadRanking() {
+                    const res = await fetch('/api/ranking');
+                    this.ranking = await res.json();
                 },
                 async auth() {
                     const endpoint = this.isRegister ? '/api/register' : '/api/login';
@@ -335,7 +378,7 @@
                     const res = await fetch('/api/products', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(this.productForm)
+                        body: JSON.stringify({ ...this.productForm, username: this.currentUser })
                     });
                     
                     if (res.ok) {
