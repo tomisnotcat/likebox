@@ -1427,3 +1427,111 @@ app.get('/api/mall/my', (req, res) => {
 });
 
 // module.exports = app;
+
+// Voting system
+app.post('/api/products/:id/vote', async (req, res) => {
+  const { username, option } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  if (!db.votes) db.votes = [];
+  const productId = parseInt(req.params.id);
+  
+  const existing = db.votes.find(v => v.user_id === user.id && v.product_id === productId);
+  if (existing) existing.option = option;
+  else db.votes.push({ id: db.votes.length + 1, user_id: user.id, product_id: productId, option, created_at: new Date().toISOString() });
+  
+  await saveDB();
+  
+  const results = {};
+  db.votes.filter(v => v.product_id === productId).forEach(v => { results[v.option] = (results[v.option] || 0) + 1; });
+  res.json({ success: true, results });
+});
+
+app.get('/api/products/:id/votes', (req, res) => {
+  const productId = parseInt(req.params.id);
+  const results = {};
+  (db.votes || []).filter(v => v.product_id === productId).forEach(v => { results[v.option] = (results[v.option] || 0) + 1; });
+  res.json(results);
+});
+
+// Q&A System
+app.post('/api/products/:id/qa', async (req, res) => {
+  const { username, question } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  if (!db.qas) db.qas = [];
+  const productId = parseInt(req.params.id);
+  
+  const qa = { id: db.qas.length + 1, user_id: user.id, username: user.username, product_id: productId, question, answers: [], created_at: new Date().toISOString() };
+  db.qas.push(qa);
+  await saveDB();
+  res.json(qa);
+});
+
+app.get('/api/products/:id/qa', (req, res) => {
+  const productId = parseInt(req.params.id);
+  const qas = (db.qas || []).filter(q => q.product_id === productId).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  res.json(qas);
+});
+
+app.post('/api/products/:id/qa/:qa_id/answer', async (req, res) => {
+  const { username, answer } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  const qa = (db.qas || []).find(q => q.id === parseInt(req.params.qa_id));
+  if (!qa) return res.status(404).json({ error: '问题不存在' });
+  
+  qa.answers.push({ user_id: user.id, username: user.username, answer, created_at: new Date().toISOString() });
+  await saveDB();
+  res.json(qa);
+});
+
+// Calendar / Product release calendar
+app.get('/api/calendar', (req, res) => {
+  const { year, month } = req.query;
+  const events = (db.products || []).map(p => ({
+    id: p.id,
+    name: p.name,
+    date: p.created_at.split('T')[0],
+    type: 'product'
+  }));
+  res.json(events);
+});
+
+// Live streaming / Stream preview
+app.post('/api/live', async (req, res) => {
+  const { username, product_id, title, start_time } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user || !user.is_admin) return res.status(403).json({ error: '仅管理员可创建' });
+  
+  if (!db.lives) db.lives = [];
+  
+  const live = { id: db.lives.length + 1, user_id: user.id, product_id, title, start_time, status: 'upcoming', created_at: new Date().toISOString() };
+  db.lives.push(live);
+  await saveDB();
+  res.json(live);
+});
+
+app.get('/api/live', (req, res) => {
+  res.json(db.lives || []);
+});
+
+app.post('/api/live/:id/join', async (req, res) => {
+  const { username } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  const live = (db.lives || []).find(l => l.id === parseInt(req.params.id));
+  if (!live) return res.status(404).json({ error: '直播不存在' });
+  
+  if (!live.viewers) live.viewers = [];
+  if (!live.viewers.includes(user.id)) live.viewers.push(user.id);
+  
+  await saveDB();
+  res.json({ success: true, viewers: live.viewers.length });
+});
+
+// module.exports = app;
