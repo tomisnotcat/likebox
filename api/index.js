@@ -1064,3 +1064,202 @@ app.get('/api/report/yearly', (req, res) => {
 });
 
 // module.exports = app;
+
+// Ads system
+app.get('/api/ads', (req, res) => {
+  const ads = [
+    { id: 1, title: '新品上市', image: 'https://picsum.photos/seed/ad1/400/200', url: '', position: 'banner' },
+    { id: 2, title: '限时优惠', image: 'https://picsum.photos/seed/ad2/400/200', url: '', position: 'sidebar' }
+  ];
+  res.json(ads);
+});
+
+// Recommendation system (simple collaborative filtering)
+app.get('/api/recommend', (req, res) => {
+  const { username } = req.query;
+  const user = db.users.find(u => u.username === username);
+  
+  // Get user's liked categories
+  let likedCategories = [];
+  if (user) {
+    const likedProducts = db.products.filter(p => db.likes.some(l => l.user_id === user.id && l.product_id === p.id));
+    likedCategories = likedProducts.map(p => p.category_id);
+  }
+  
+  // Recommend products from liked categories or popular
+  let recommend = db.products.map(p => ({ ...p, score: 0 }));
+  
+  recommend.forEach(p => {
+    if (likedCategories.includes(p.category_id)) p.score += 5;
+    p.score += db.likes.filter(l => l.product_id === p.id).length;
+    // Add some randomness
+    p.score += Math.random() * 2;
+  });
+  
+  recommend = recommend.sort((a, b) => b.score - a.score).slice(0, 10).map(p => ({
+    ...p,
+    like_count: db.likes.filter(l => l.product_id === p.id).length
+  }));
+  
+  res.json(recommend);
+});
+
+// Content moderation / sensitive words filter
+const sensitiveWords = ['敏感词1', '敏感词2', 'test'];
+function filterContent(content) {
+  if (!content) return content;
+  let filtered = content;
+  sensitiveWords.forEach(word => {
+    filtered = filtered.replace(new RegExp(word, 'gi'), '***');
+  });
+  return filtered;
+}
+
+app.post('/api/comments', async (req, res) => {
+  const { product_id, content, username } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  const filteredContent = filterContent(content);
+  const comment = { id: db.comments.length + 1, user_id: user.id, product_id, content: filteredContent, created_at: new Date().toISOString() };
+  db.comments.push(comment);
+  
+  // Notify
+  const product = db.products.find(p => p.id === product_id);
+  if (product && product.user_id !== user.id) {
+    // notification logic here
+  }
+  
+  await saveDB();
+  res.json({ ...comment, username: user.username, like_count: 0, is_liked: false, replies: [] });
+});
+
+// Multi-language support
+app.get('/api/i18n/:lang', (req, res) => {
+  const { lang } = req.params;
+  const translations = {
+    zh: { welcome: '欢迎来到LikeBox', products: '产品', likes: '点赞' },
+    en: { welcome: 'Welcome to LikeBox', products: 'Products', likes: 'Likes' }
+  };
+  res.json(translations[lang] || translations.zh);
+});
+
+// Theme store
+app.get('/api/themes', (req, res) => {
+  const themes = [
+    { id: 1, name: '默认', primary: '#4f46e5', background: '#f9fafb' },
+    { id: 2, name: '粉红', primary: '#ec4899', background: '#fdf2f8' },
+    { id: 3, name: '绿色', primary: '#10b981', background: '#ecfdf5' },
+    { id: 4, name: '暗黑', primary: '#8b5cf6', background: '#1a1a2e' }
+  ];
+  res.json(themes);
+});
+
+app.post('/api/themes/apply', async (req, res) => {
+  const { username, theme_id } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  user.theme = theme_id;
+  await saveDB();
+  res.json({ success: true });
+});
+
+// Achievements / Badges system
+const achievements = [
+  { id: 'first_like', name: '初试锋芒', description: '第一次点赞', icon: '👍', points: 10 },
+  { id: 'first_comment', name: '评论达人', description: '第一次评论', icon: '💬', points: 10 },
+  { id: 'first_product', name: '产品猎人', description: '添加第一个产品', icon: '🏆', points: 20 },
+  { id: 'ten_likes', name: '点赞狂人', description: '累计点赞10次', icon: '❤️', points: 50 },
+  { id: 'ten_products', name: '产品大户', description: '添加10个产品', icon: '📦', points: 100 },
+  { id: 'streak_7', name: '连续签到', description: '连续签到7天', icon: '🔥', points: 70 },
+  { id: 'verified', name: '认证用户', description: '完成实名认证', icon: '✅', points: 30 },
+  { id: 'vip', name: 'VIP会员', description: '开通会员', icon: '⭐', points: 50 }
+];
+
+app.get('/api/achievements', (req, res) => {
+  const { username } = req.query;
+  const user = db.users.find(u => u.username === username);
+  
+  if (!user) return res.json(achievements);
+  
+  const userAchievements = user.achievements || [];
+  
+  const result = achievements.map(a => ({
+    ...a,
+    unlocked: userAchievements.includes(a.id),
+    unlocked_at: user.achievement_dates?.[a.id]
+  }));
+  
+  res.json(result);
+});
+
+function checkAchievements(user) {
+  if (!user.achievements) user.achievements = [];
+  if (!user.achievement_dates) user.achievement_dates = {};
+  
+  const newAchievements = [];
+  
+  // First like
+  if (db.likes.filter(l => l.user_id === user.id).length >= 1 && !user.achievements.includes('first_like')) {
+    user.achievements.push('first_like');
+    user.achievement_dates.first_like = new Date().toISOString();
+    user.points = (user.points || 0) + 10;
+    newAchievements.push('first_like');
+  }
+  
+  // First comment
+  if (db.comments.filter(c => c.user_id === user.id).length >= 1 && !user.achievements.includes('first_comment')) {
+    user.achievements.push('first_comment');
+    user.achievement_dates.first_comment = new Date().toISOString();
+    user.points = (user.points || 0) + 10;
+    newAchievements.push('first_comment');
+  }
+  
+  // First product
+  if (db.products.filter(p => p.user_id === user.id).length >= 1 && !user.achievements.includes('first_product')) {
+    user.achievements.push('first_product');
+    user.achievement_dates.first_product = new Date().toISOString();
+    user.points = (user.points || 0) + 20;
+    newAchievements.push('first_product');
+  }
+  
+  // 10 likes
+  if (db.likes.filter(l => l.user_id === user.id).length >= 10 && !user.achievements.includes('ten_likes')) {
+    user.achievements.push('ten_likes');
+    user.achievement_dates.ten_likes = new Date().toISOString();
+    user.points = (user.points || 0) + 50;
+    newAchievements.push('ten_likes');
+  }
+  
+  // 10 products
+  if (db.products.filter(p => p.user_id === user.id).length >= 10 && !user.achievements.includes('ten_products')) {
+    user.achievements.push('ten_products');
+    user.achievement_dates.ten_products = new Date().toISOString();
+    user.points = (user.points || 0) + 100;
+    newAchievements.push('ten_products');
+  }
+  
+  // 7 day streak
+  if ((user.checkin_days || 0) >= 7 && !user.achievements.includes('streak_7')) {
+    user.achievements.push('streak_7');
+    user.achievement_dates.streak_7 = new Date().toISOString();
+    user.points = (user.points || 0) + 70;
+    newAchievements.push('streak_7');
+  }
+  
+  return newAchievements;
+}
+
+app.get('/api/achievements/check', (req, res) => {
+  const { username } = req.query;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.json({ new: [] });
+  
+  const newAchievements = checkAchievements(user);
+  if (newAchievements.length > 0) saveDB();
+  
+  res.json({ new: newAchievements });
+});
+
+// module.exports = app;
