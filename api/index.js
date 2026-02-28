@@ -1,12 +1,13 @@
 const express = require('express');
 const cors = require('cors');
+const { kv } = require('@vercel/kv');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 内存存储
-let db = {
+// 初始化数据
+const defaultData = {
   users: [
     { id: 1, username: 'demo', password: '123456', created_at: '2024-01-01T00:00:00.000Z' }
   ],
@@ -38,23 +39,66 @@ let db = {
     { id: 1, user_id: 1, product_id: 1, content: '真的很棒！', created_at: '2024-01-16T10:00:00.000Z' },
     { id: 2, user_id: 1, product_id: 7, content: '塞尔达传说太好玩了！', created_at: '2024-01-17T10:00:00.000Z' },
     { id: 3, user_id: 1, product_id: 9, content: '三体世界观太震撼了', created_at: '2024-01-18T10:00:00.000Z' }
-  ]
+  ],
+  nextIds: { users: 2, products: 13, likes: 4, comments: 4 }
 };
 
-let nextIds = { users: 2, products: 13, likes: 4, comments: 4 };
+let db;
+let useKV = false;
+
+// 尝试加载或初始化数据
+async function initDB() {
+  try {
+    // 尝试从 KV 读取
+    const data = await kv.get('likebox_data');
+    if (data) {
+      db = data;
+      useKV = true;
+      console.log('Using Vercel KV storage');
+    } else {
+      // 首次初始化
+      db = defaultData;
+      await kv.set('likebox_data', db);
+      useKV = true;
+      console.log('Initialized data in Vercel KV');
+    }
+  } catch (e) {
+    console.log('KV not available, using in-memory:', e.message);
+    db = { ...defaultData };
+  }
+}
+
+async function saveDB() {
+  if (useKV) {
+    try {
+      await kv.set('likebox_data', db);
+    } catch (e) {
+      console.log('Save to KV failed:', e.message);
+    }
+  }
+}
 
 function genId(type) {
-  const id = nextIds[type]++;
+  const id = db.nextIds[type]++;
   return id;
 }
 
-app.post('/api/register', (req, res) => {
+// 必须先初始化
+let initPromise = initDB();
+
+app.use(async (req, res, next) => {
+  await initPromise;
+  next();
+});
+
+app.post('/api/register', async (req, res) => {
   const { username, password } = req.body;
   if (db.users.find(u => u.username === username)) {
     return res.status(400).json({ error: '用户名已存在' });
   }
   const user = { id: genId('users'), username, password, created_at: new Date().toISOString() };
   db.users.push(user);
+  await saveDB();
   res.json({ id: user.id, username: user.username });
 });
 
@@ -81,14 +125,15 @@ app.get('/api/products', (req, res) => {
   res.json(products.map(p => ({ ...p, is_liked: userId ? db.likes.some(l => l.user_id === userId && l.product_id === p.id) : false })));
 });
 
-app.post('/api/products', (req, res) => {
+app.post('/api/products', async (req, res) => {
   const { name, description, image_url, category_id } = req.body;
   const product = { id: genId('products'), name, description, image_url: image_url || null, category_id, created_at: new Date().toISOString() };
   db.products.push(product);
+  await saveDB();
   res.json({ ...product, like_count: 0, is_liked: false });
 });
 
-app.post('/api/products/:id/like', (req, res) => {
+app.post('/api/products/:id/like', async (req, res) => {
   const { username } = req.body;
   const productId = parseInt(req.params.id);
   const user = db.users.find(u => u.username === username);
@@ -98,6 +143,7 @@ app.post('/api/products/:id/like', (req, res) => {
   if (idx >= 0) db.likes.splice(idx, 1);
   else db.likes.push({ id: genId('likes'), user_id: user.id, product_id: productId, created_at: new Date().toISOString() });
   
+  await saveDB();
   res.json({ liked: idx < 0, count: db.likes.filter(l => l.product_id === productId).length });
 });
 
@@ -106,12 +152,13 @@ app.get('/api/products/:id/comments', (req, res) => {
   res.json(db.comments.filter(c => c.product_id === productId).map(c => ({ ...c, username: db.users.find(u => u.id === c.user_id)?.username || '未知' })).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
 });
 
-app.post('/api/comments', (req, res) => {
+app.post('/api/comments', async (req, res) => {
   const { product_id, content, username } = req.body;
   const user = db.users.find(u => u.username === username);
   if (!user) return res.status(401).json({ error: '请先登录' });
   const comment = { id: genId('comments'), user_id: user.id, product_id, content, created_at: new Date().toISOString() };
   db.comments.push(comment);
+  await saveDB();
   res.json({ ...comment, username: user.username });
 });
 
