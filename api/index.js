@@ -40,49 +40,25 @@ const categories = [
   { id: 10, name: '汽车', children: [] }
 ];
 
-const brandLogos = {
-  'Apple': 'https://logo.clearbit.com/apple.com',
-  'Samsung': 'https://logo.clearbit.com/samsung.com',
-  'Huawei': 'https://logo.clearbit.com/huawei.com',
-  'Xiaomi': 'https://logo.clearbit.com/xiaomi.com',
-  'OPPO': 'https://logo.clearbit.com/oppo.com',
-  'vivo': 'https://logo.clearbit.com/vivo.com',
-  'Sony': 'https://logo.clearbit.com/sony.com',
-  'Nike': 'https://logo.clearbit.com/nike.com',
-  'Adidas': 'https://logo.clearbit.com/adidas.com',
-  'Puma': 'https://logo.clearbit.com/puma.com',
-  'NewBalance': 'https://logo.clearbit.com/newbalance.com',
-  'UnderArmour': 'https://logo.clearbit.com/underarmour.com',
-  'IKEA': 'https://logo.clearbit.com/ikea.com',
-  'MUJI': 'https://logo.clearbit.com/muji.com',
-  'Zara': 'https://logo.clearbit.com/zara.com',
-  'HM': 'https://logo.clearbit.com/hm.com',
-  'Uniqlo': 'https://logo.clearbit.com/uniqlo.com',
-  'Starbucks': 'https://logo.clearbit.com/starbucks.com',
-  'Tesla': 'https://logo.clearbit.com/tesla.com',
-  'BYD': 'https://logo.clearbit.com/byd.com',
-  'NIO': 'https://logo.clearbit.com/nio.com',
-  'LiAuto': 'https://logo.clearbit.com/lixiang.com',
-  'BMW': 'https://logo.clearbit.com/bmw.com',
-  'Mercedes': 'https://logo.clearbit.com/mercedes-benz.com'
-};
+const brands = ['Apple', 'Samsung', 'Huawei', 'Xiaomi', 'OPPO', 'vivo', 'Sony', 'Nike', 'Adidas', 'Puma', 'NewBalance', 'UnderArmour', 'IKEA', 'MUJI', 'Zara', 'HM', 'Uniqlo', 'Starbucks', 'Tesla', 'BYD', 'NIO', 'LiAuto', 'BMW', 'Mercedes'];
+const types = ['手机', '电脑', '平板', '耳机', '手表', '音箱', '相机', '键盘', '鼠标', '显示器', '充电宝', '数据线', '充电器', '跑鞋', '运动鞋', '瑜伽垫', 'T恤', '裤子', '外套', '咖啡', '茶', '零食', '坚果', '小说', '教材', '游戏', '主机', '面霜', '口红', '香水', '床', '沙发', '桌子', '椅子', '净化器', '汽车'];
+const features = ['高性能', '高品质', '超薄', '轻便', '耐用', '时尚', '经典', '智能', '便携', '专业'];
+const colors = ['4f46e5', 'ec4899', '10b981', 'f59e0b', '3b82f6', '8b5cf6', 'ef4444', '06b6d4'];
 
 function generateProducts() {
   const products = [];
-  const brands = Object.keys(brandLogos);
-  const types = ['手机', '电脑', '平板', '耳机', '手表', '音箱', '相机', '键盘', '鼠标', '显示器', '充电宝', '数据线', '充电器', '跑鞋', '运动鞋', '瑜伽垫', 'T恤', '裤子', '外套', '咖啡', '茶', '零食', '坚果', '小说', '教材', '游戏', '主机', '面霜', '口红', '香水', '床', '沙发', '桌子', '椅子', '净化器', '汽车'];
-  const features = ['高性能', '高品质', '超薄', '轻便', '耐用', '时尚', '经典', '智能', '便携', '专业'];
-  
   let id = 1;
   for (let i = 0; i < 3000; i++) {
     const brand = brands[i % brands.length];
     const type = types[i % types.length];
     const feature = features[i % features.length];
+    const color = colors[i % colors.length];
+    const num = Math.floor(i / brands.length) + 1;
     
-    const name = `${brand} ${type} ${Math.floor(i / brands.length) + 1}`;
+    const name = `${brand} ${type} ${num}`;
     const description = `${feature}的${type}，品质保证`;
     
-    // Get category based on type
+    // Category mapping
     let categoryId = 1;
     if (['手机', '电脑', '平板', '耳机', '手表', '相机'].includes(type)) categoryId = 101;
     else if (['跑鞋', '运动鞋', '瑜伽垫'].includes(type)) categoryId = 20101;
@@ -95,23 +71,25 @@ function generateProducts() {
     else if (type === '汽车') categoryId = 1001;
     else categoryId = 1 + (i % 10);
     
+    // Use placeholder with product name
+    const encodedName = encodeURIComponent(`${brand} ${type}`);
+    
     products.push({
       id: id++,
       name: name,
       description: description,
-      image_url: brandLogos[brand] || 'https://via.placeholder.com/400x300?text=Product',
+      image_url: `https://placehold.co/400x300/${color}/ffffff?text=${encodedName}`,
       product_url: '',
       category_id: categoryId,
       tags: `${type},${brand}`,
       created_at: new Date(2024, 0, 1 + (i % 365)).toISOString()
     });
   }
-  
   return products;
 }
 
 const defaultData = {
-  brands: Object.entries(brandLogos).map(([name, logo], i) => ({ id: i+1, name, logo, description: name })),
+  brands: brands.map((name, i) => ({ id: i+1, name, logo: `https://placehold.co/100x100/4f46e5/ffffff?text=${name.charAt(0)}`, description: name })),
   users: [{ id: 1, username: 'demo', password: '123456', is_admin: true, avatar: '', bio: '演示账号', created_at: '2024-01-01T00:00:00.000Z' }],
   categories: categories,
   products: generateProducts(),
@@ -123,28 +101,14 @@ const defaultData = {
 
 let db = { ...defaultData };
 
-function genId(type) {
-  const id = db.nextIds[type]++;
-  return id;
-}
+function genId(type) { const id = db.nextIds[type]++; return id; }
 
-// Products
 app.get('/api/products', (req, res) => {
-  let products = db.products.map(p => ({
-    ...p,
-    like_count: Math.floor(Math.random() * 1000),
-    comment_count: Math.floor(Math.random() * 100)
-  }));
+  let products = db.products.map(p => ({ ...p, like_count: Math.floor(Math.random() * 1000), comment_count: Math.floor(Math.random() * 100) }));
   const { search, category_id, limit } = req.query;
-  if (search) {
-    const s = search.toLowerCase();
-    products = products.filter(p => p.name.toLowerCase().includes(s) || p.tags?.toLowerCase().includes(s));
-  }
-  if (category_id) {
-    products = products.filter(p => p.category_id === parseInt(category_id));
-  }
-  const maxResults = parseInt(limit) || 50;
-  res.json(products.slice(0, maxResults));
+  if (search) { const s = search.toLowerCase(); products = products.filter(p => p.name.toLowerCase().includes(s) || p.tags?.toLowerCase().includes(s)); }
+  if (category_id) { products = products.filter(p => p.category_id === parseInt(category_id)); }
+  res.json(products.slice(0, parseInt(limit) || 50));
 });
 
 app.get('/api/products/:id', (req, res) => {
@@ -190,6 +154,7 @@ app.post('/api/login', (req, res) => {
 });
 
 app.get('/api/categories', (req, res) => res.json(db.categories));
+
 app.get('/api/categories/:id', (req, res) => {
   const targetId = parseInt(req.params.id);
   const findCategory = (cats, id) => {
