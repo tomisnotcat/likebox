@@ -185,4 +185,25 @@ app.get('/api/ranking', (req, res) => {
   res.json(ranking);
 });
 
+// 产品排行榜 - 按分类
+app.get('/api/products/ranking', (req, res) => {
+  const { category_id } = req.query;
+  let products = [...db.products];
+  
+  if (category_id) {
+    products = products.filter(p => p.category_id == category_id);
+  }
+  
+  const ranking = products.map(p => ({
+    id: p.id,
+    name: p.name,
+    image_url: p.image_url,
+    like_count: db.likes.filter(l => l.product_id === p.id).length,
+    category_id: p.category_id
+  }));
+  
+  ranking.sort((a, b) => b.like_count - a.like_count);
+  res.json(ranking);
+});
+
 module.exports = app;

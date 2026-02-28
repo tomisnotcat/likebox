@@ -21,6 +21,9 @@
                     <button @click="showRanking = true; loadRanking()" class="text-gray-600 hover:text-indigo-600">
                         <i class="fas fa-trophy"></i> 排行榜
                     </button>
+                    <button @click="showProductRanking = true; loadProductRanking()" class="text-gray-600 hover:text-indigo-600">
+                        <i class="fas fa-fire"></i> 热门
+                    </button>
                     <div v-if="currentUser" class="flex items-center gap-3">
                         <span class="text-gray-600">👤 {{ currentUser }}</span>
                         <button @click="logout" class="text-sm text-gray-500 hover:text-gray-700">退出</button>
@@ -295,6 +298,51 @@
                 </div>
             </div>
         </div>
+
+        <!-- 产品排行榜弹窗 -->
+        <div v-if="showProductRanking" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showProductRanking = false">
+            <div class="bg-white rounded-xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold">
+                        <i class="fas fa-fire text-red-500"></i> 热门产品
+                    </h2>
+                    <button @click="showProductRanking = false" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <select v-model="rankingCategoryId" @change="loadProductRanking" class="w-full px-4 py-2 border rounded-lg mb-4">
+                    <option :value="null">全部分类</option>
+                    <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                </select>
+                
+                <div class="space-y-3">
+                    <div v-for="(product, index) in productRanking" :key="product.id" 
+                         class="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer"
+                         @click="viewProduct(product); showProductRanking = false">
+                        <span class="w-8 text-center font-bold text-lg"
+                              :class="index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-orange-400' : 'text-gray-500'">
+                            {{ index + 1 }}
+                        </span>
+                        <div v-if="product.image_url" class="w-12 h-12 rounded-lg bg-gray-200 flex-shrink-0">
+                            <img :src="product.image_url" class="w-full h-full object-cover rounded-lg">
+                        </div>
+                        <div v-else class="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-box text-indigo-300"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="font-medium truncate">{{ product.name }}</div>
+                            <div class="text-xs text-gray-500">
+                                <span class="text-red-500"><i class="fas fa-heart"></i> {{ product.like_count }}</span>
+                            </div>
+                        </div>
+                        <i v-if="index === 0" class="fas fa-crown text-yellow-500"></i>
+                    </div>
+                    
+                    <p v-if="productRanking.length === 0" class="text-gray-400 text-center py-4">暂无数据</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -311,6 +359,9 @@
                     showAddProduct: false,
                     showRanking: false,
                     ranking: [],
+                    showProductRanking: false,
+                    productRanking: [],
+                    rankingCategoryId: null,
                     isRegister: false,
                     search: '',
                     categoryId: null,
@@ -342,6 +393,12 @@
                 async loadRanking() {
                     const res = await fetch('/api/ranking');
                     this.ranking = await res.json();
+                },
+                async loadProductRanking() {
+                    const params = new URLSearchParams();
+                    if (this.rankingCategoryId) params.append('category_id', this.rankingCategoryId);
+                    const res = await fetch(`/api/products/ranking?${params}`);
+                    this.productRanking = await res.json();
                 },
                 async auth() {
                     const endpoint = this.isRegister ? '/api/register' : '/api/login';
