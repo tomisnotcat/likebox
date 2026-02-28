@@ -50,6 +50,7 @@ const defaultData = {
     { id: 3, user_id: 1, product_id: 9, content: '三体世界观太震撼了', created_at: '2024-01-18T10:00:00.000Z' }
   ],
   comment_likes: [],
+  ratings: [],
   favorites: [],
   reports: [],
   notifications: [],
@@ -810,3 +811,64 @@ app.get('/api/admin/reports', (req, res) => {
   });
   res.json(reports);
 });
+
+// Product ratings
+app.post('/api/products/:id/rate', async (req, res) => {
+  const { username, rating } = req.body;
+  const productId = parseInt(req.params.id);
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  if (rating < 1 || rating > 5) return res.status(400).json({ error: '评分1-5' });
+  
+  const existing = db.ratings.find(r => r.user_id === user.id && r.product_id === productId);
+  if (existing) existing.rating = rating;
+  else db.ratings.push({ id: db.ratings.length + 1, user_id: user.id, product_id: productId, rating, created_at: new Date().toISOString() });
+  
+  await saveDB();
+  const productRatings = db.ratings.filter(r => r.product_id === productId);
+  const avgRating = productRatings.length ? productRatings.reduce((sum, r) => sum + r.rating, 0) / productRatings.length : 0;
+  res.json({ rating_count: productRatings.length, avg_rating: avgRating.toFixed(1) });
+});
+
+app.get('/api/products/:id/ratings', (req, res) => {
+  const productId = parseInt(req.params.id);
+  const ratings = db.ratings.filter(r => r.product_id === productId).map(r => {
+    const user = db.users.find(u => u.id === r.user_id);
+    return { ...r, username: user?.username };
+  });
+  const avgRating = ratings.length ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length : 0;
+  res.json({ ratings, avg_rating: avgRating.toFixed(1), count: ratings.length });
+});
+
+// Weekly picks
+app.get('/api/weekly', (req, res) => {
+  const products = db.products.map(p => ({ ...p, like_count: db.likes.filter(l => l.product_id === p.id).length }));
+  products.sort((a, b) => b.like_count - a.like_count);
+  res.json(products.slice(0, 6));
+});
+
+// Activity leaderboard
+app.get('/api/leaderboard', (req, res) => {
+  const userScores = {};
+  db.likes.forEach(l => {
+    if (!userScores[l.user_id]) userScores[l.user_id] = { likes: 0, comments: 0, products: 0 };
+    userScores[l.user_id].likes++;
+  });
+  db.comments.forEach(c => {
+    if (!userScores[c.user_id]) userScores[c.user_id] = { likes: 0, comments: 0, products: 0 };
+    userScores[c.user_id].comments++;
+  });
+  db.products.forEach(p => {
+    if (!userScores[p.user_id]) userScores[p.user_id] = { likes: 0, comments: 0, products: 0 };
+    userScores[p.user_id].products++;
+  });
+  
+  const leaderboard = Object.entries(userScores).map(([userId, stats]) => {
+    const user = db.users.find(u => u.id === parseInt(userId));
+    return { user_id: userId, username: user?.username, ...stats, total: stats.likes + stats.comments + stats.products * 2 };
+  }).sort((a, b) => b.total - a.total).slice(0, 20);
+  
+  res.json(leaderboard);
+});
+
+module.exports = app;
