@@ -1656,3 +1656,129 @@ app.get('/api', (req, res) => {
 });
 
 // module.exports = app;
+
+// VR Showroom - Virtual exhibition hall
+app.get('/api/vr/:id', (req, res) => {
+  const product = db.products.find(p => p.id === parseInt(req.params.id));
+  if (!product) return res.status(404).json({ error: '产品不存在' });
+  
+  res.json({
+    id: product.id,
+    name: product.name,
+    vr_url: `https://vr.example.com/showroom/${product.id}`,
+    panorama: product.image_url,
+    hotspots: [
+      { x: 30, y: 50, label: '正面' },
+      { x: 70, y: 50, label: '细节' }
+    ]
+  });
+});
+
+// AI Image Generation - placeholder
+app.post('/api/ai/image', async (req, res) => {
+  const { prompt } = req.body;
+  if (!prompt) return res.status(400).json({ error: '请输入描述' });
+  
+  // In production, integrate with DALL-E or Stable Diffusion
+  res.json({
+    image_url: `https://picsum.photos/seed/${encodeURIComponent(prompt)}/400/300`,
+    prompt,
+    created_at: new Date().toISOString()
+  });
+});
+
+// Voice Assistant - speech to text placeholder
+app.post('/api/voice/tts', async (req, res) => {
+  const { text } = req.body;
+  // In production, integrate with TTS service
+  res.json({
+    audio_url: `https://api.example.com/tts?text=${encodeURIComponent(text)}`,
+    text
+  });
+});
+
+app.post('/api/voice/stt', async (req, res) => {
+  const { audio_url } = req.body;
+  // In production, integrate with STT service
+  res.json({
+    text: '示例文本，实际需接入语音识别服务',
+    confidence: 0.95
+  });
+});
+
+// Smart Contract / Decentralized voting
+app.post('/api/dao/vote', async (req, res) => {
+  const { username, proposal, option } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  if (!db.dao_votes) db.dao_votes = [];
+  const existing = db.dao_votes.find(v => v.user_id === user.id && v.proposal === proposal);
+  if (existing) existing.option = option;
+  else db.dao_votes.push({ id: db.dao_votes.length + 1, user_id: user.id, proposal, option, timestamp: new Date().toISOString() });
+  
+  await saveDB();
+  res.json({ success: true, tx_hash: '0x' + Math.random().toString(16).slice(2, 10) });
+});
+
+app.get('/api/dao/:proposal', (req, res) => {
+  const proposal = req.params.proposal;
+  const votes = (db.dao_votes || []).filter(v => v.proposal === proposal);
+  const results = {};
+  votes.forEach(v => { results[v.option] = (results[v.option] || 0) + 1; });
+  res.json({ proposal, votes: votes.length, results });
+});
+
+// IoT - Smart device integration
+app.get('/api/iot/devices', (req, res) => {
+  const devices = [
+    { id: 1, name: '智能音箱', status: 'online', type: 'speaker' },
+    { id: 2, name: '智能灯泡', status: 'offline', type: 'light' },
+    { id: 3, name: '智能摄像头', status: 'online', type: 'camera' }
+  ];
+  res.json(devices);
+});
+
+app.post('/api/iot/:device_id/control', async (req, res) => {
+  const { action } = req.body;
+  // In production, integrate with IoT protocols (MQTT, etc.)
+  res.json({ success: true, device_id: req.params.device_id, action, status: 'executed' });
+});
+
+// Metaverse / Virtual avatar
+app.post('/api/meta/avatar', async (req, res) => {
+  const { username, style } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  user.avatar_3d = style || 'default';
+  await saveDB();
+  
+  res.json({
+    avatar_url: `https://meta.example.com/avatar/${user.username}.glb`,
+    style: user.avatar_3d
+  });
+});
+
+app.get('/api/meta/worlds', (req, res) => {
+  const worlds = [
+    { id: 1, name: '产品展厅', users: 128, max_users: 500 },
+    { id: 2, name: '虚拟商店', users: 64, max_users: 200 },
+    { id: 3, name: '社交广场', users: 256, max_users: 1000 }
+  ];
+  res.json(worlds);
+});
+
+app.post('/api/meta/enter', async (req, res) => {
+  const { username, world_id } = req.body;
+  const user = db.users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: '请先登录' });
+  
+  // In production, integrate with metaverse platform
+  res.json({
+    world_url: `https://meta.example.com/world/${world_id}?user=${username}`,
+    token: 'meta_session_' + Date.now()
+  });
+});
+
+// module.exports = app;
