@@ -114,12 +114,16 @@ const brands = [
   { id: 15, name: 'Opna', category_id: 402, logo: '' },
   { id: 16, name: 'DANVOUY', category_id: 402, logo: '' }
 ];
+
+const defaultData = {
+  brands: brands,
   users: users,
   categories: categories,
   products: products,
   likes: likes,
   comments: comments,
   favorites: favorites,
+  follows: follows,
   nextIds: { users: users.length + 1, products: products.length + 1 }
 };
 
@@ -127,7 +131,17 @@ let db = { ...defaultData };
 
 app.get('/api/products', (req, res, next) => {
   try {
-    let result = db.products.map(p => ({ ...p, like_count: db.likes.filter(l => l.product_id === p.id).length, comment_count: db.comments.filter(c => c.product_id === p.id).length }));
+    // 预处理：建立点赞和评论计数缓存 O(n)
+    const likeCountMap = {};
+    const commentCountMap = {};
+    db.likes.forEach(l => { likeCountMap[l.product_id] = (likeCountMap[l.product_id] || 0) + 1; });
+    db.comments.forEach(c => { commentCountMap[c.product_id] = (commentCountMap[c.product_id] || 0) + 1; });
+    
+    let result = db.products.map(p => ({ 
+      ...p, 
+      like_count: likeCountMap[p.id] || 0, 
+      comment_count: commentCountMap[p.id] || 0
+    }));
     if (req.query.search) { 
       const s = req.query.search.toLowerCase(); 
       result = result.filter(p => p.name.toLowerCase().includes(s) || p.tags?.toLowerCase().includes(s)); 
