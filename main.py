@@ -206,10 +206,24 @@ def get_products(
     category_id: Optional[int] = None,
     search: Optional[str] = None,
     sort: str = "latest",
+    page: int = 1,
+    limit: int = 20,
     db: Session = Depends(get_db),
     username: Optional[str] = None
 ):
-    query = db.query(Product)
+    from sqlalchemy import func
+    
+    # 子查询获取点赞数
+    like_count_subq = (
+        db.query(Like.product_id, func.count(Like.id).label('like_count'))
+        .group_by(Like.product_id)
+        .subquery()
+    )
+    
+    query = db.query(Product, func.coalesce(like_count_subq.c.like_count, 0).label('like_count'))
+    
+    # 左连接点赞数
+    query = query.outerjoin(like_count_subq, Product.id == like_count_subq.c.product_id)
     
     if category_id:
         query = query.filter(Product.category_id == category_id)
@@ -217,29 +231,32 @@ def get_products(
         query = query.filter(Product.name.contains(search))
     
     if sort == "popular":
-        query = query.outerjoin(Like).group_by(Product.id).order_by(Like.id.count().desc())
+        query = query.order_by(func.coalesce(like_count_subq.c.like_count, 0).desc())
     else:
         query = query.order_by(Product.created_at.desc())
     
-    products = query.all()
+    # 分页
+    offset = (page - 1) * limit
+    results = query.offset(offset).limit(limit).all()
     
     # 获取当前用户点赞状态
     current_user = None
+    user_liked_products = set()
     if username:
         current_user = db.query(User).filter(User.username == username).first()
-    
-    result = []
-    for p in products:
-        like_count = len(p.likes)
-        is_liked = False
         if current_user:
-            is_liked = any(like.user_id == current_user.id for like in p.likes)
-        result.append(ProductOut(
+            liked = db.query(Like.product_id).filter(Like.user_id == current_user.id).all()
+            user_liked_products = {l[0] for l in liked}
+    
+    product_outputs = []
+    for p, like_count in results:
+        product_outputs.append(ProductOut(
             id=p.id, name=p.name, description=p.description,
             image_url=p.image_url, category_id=p.category_id,
-            created_at=p.created_at, like_count=like_count, is_liked=is_liked
+            created_at=p.created_at, like_count=like_count, 
+            is_liked=p.id in user_liked_products
         ))
-    return result
+    return product_outputs
 
 
 @app.post("/api/products", response_model=ProductOut)
