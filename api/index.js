@@ -73,6 +73,7 @@ const products = fakeStoreProducts.map((p, i) => ({
   image_url: p.image,
   category_id: categoryMap[p.category] || 401,
   tags: p.category,
+  price: p.price,
   created_at: new Date(2024, 0, 1 + i).toISOString()
 }));
 
@@ -139,6 +140,7 @@ app.get('/api/products', (req, res, next) => {
     
     let result = db.products.map(p => ({ 
       ...p, 
+      price: p.price || 0,
       like_count: likeCountMap[p.id] || 0, 
       comment_count: commentCountMap[p.id] || 0
     }));
@@ -226,9 +228,19 @@ app.post('/api/comments', (req, res, next) => {
 
 app.post('/api/register', (req, res, next) => {
   try {
-    if (db.users.find(u => u.username === req.body.username)) return res.status(400).json({ error: '用户名已存在' });
-    if (!req.body.username || !req.body.password) return res.status(400).json({ error: '用户名和密码不能为空' });
-    const user = { id: db.users.length + 1, username: req.body.username, password: req.body.password, is_admin: false, avatar: '', bio: '', created_at: new Date().toISOString() };
+    const username = (req.body.username || '').trim();
+    const password = req.body.password || '';
+    
+    if (!username) return res.status(400).json({ error: '用户名不能为空' });
+    if (!password) return res.status(400).json({ error: '密码不能为空' });
+    if (username.length < 2) return res.status(400).json({ error: '用户名至少2个字符' });
+    if (password.length < 6) return res.status(400).json({ error: '密码至少6个字符' });
+    if (username.length > 20) return res.status(400).json({ error: '用户名最多20个字符' });
+    if (!/^[a-zA-Z0-9_\u4e00-\u9fa5]+$/.test(username)) return res.status(400).json({ error: '用户名只能包含字母、数字、下划线和中文' });
+    
+    if (db.users.find(u => u.username === username)) return res.status(400).json({ error: '用户名已存在' });
+    
+    const user = { id: db.users.length + 1, username: username, password: password, is_admin: false, avatar: '', bio: '', created_at: new Date().toISOString() };
     db.users.push(user);
     res.json({ success: true, username: user.username });
   } catch (err) {
@@ -337,6 +349,44 @@ app.get('/api/user/:username', (req, res, next) => {
   }
 });
 
+// 更新用户头像
+app.put('/api/user/avatar', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.body.username);
+    if (!user) return res.status(401).json({ error: '请先登录' });
+    
+    const avatar = req.body.avatar;
+    if (!avatar) return res.status(400).json({ error: '头像不能为空' });
+    
+    // 验证是否为有效的图片URL (data URL)
+    if (!avatar.startsWith('data:image/')) {
+      return res.status(400).json({ error: '无效的图片格式' });
+    }
+    
+    user.avatar = avatar;
+    res.json({ success: true, avatar: user.avatar });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 更新用户资料
+app.put('/api/user/profile', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.body.username);
+    if (!user) return res.status(401).json({ error: '请先登录' });
+    
+    if (req.body.bio !== undefined) {
+      if (req.body.bio.length > 200) return res.status(400).json({ error: '简介最多200个字符' });
+      user.bio = req.body.bio;
+    }
+    
+    res.json({ success: true, bio: user.bio });
+  } catch (err) {
+    next(err);
+  }
+});
+
 app.post('/api/checkin', (req, res, next) => {
   try {
     const user = db.users.find(u => u.username === req.body.username);
@@ -395,12 +445,23 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: '服务器内部错误', message: err.message });
 });
 
-// 404 处理
-app.use((req, res) => {
-  res.status(404).json({ error: 'API路由不存在' });
-});
-
 // ==================== 用户关注功能 ====================
+
+// 获取关注状态
+app.get('/api/follow', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.query.username);
+    const targetUser = db.users.find(u => u.username === req.query.target_username);
+    if (!user || !targetUser) return res.status(404).json({ error: '用户不存在' });
+    
+    if (!db.follows) db.follows = [];
+    const isFollowing = db.follows.some(f => f.follower_id === user.id && f.following_id === targetUser.id);
+    
+    res.json({ following: isFollowing });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // 关注用户
 app.post('/api/follow', (req, res, next) => {
@@ -647,6 +708,11 @@ app.use((err, req, res, next) => {
     return res.status(400).json({ error: '无效的数据格式' });
   }
   next(err);
+});
+
+// 404 处理
+app.use((req, res) => {
+  res.status(404).json({ error: 'API路由不存在' });
 });
 
 module.exports = app;
