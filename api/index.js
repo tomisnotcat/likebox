@@ -159,8 +159,10 @@ app.get('/api/products/:id', (req, res, next) => {
   try {
     const product = db.products.find(p => p.id === parseInt(req.params.id));
     if (!product) return res.status(404).json({ error: '产品不存在' });
+    // 预处理计数
+    const likeCount = db.likes.filter(l => l.product_id === product.id).length;
     const productComments = db.comments.filter(c => c.product_id === product.id).map(c => { const user = db.users.find(u => u.id === c.user_id); return { ...c, username: user?.username }; });
-    res.json({ ...product, like_count: db.likes.filter(l => l.product_id === product.id).length, comments: productComments });
+    res.json({ ...product, like_count: likeCount, comments: productComments });
   } catch (err) {
     next(err);
   }
@@ -278,7 +280,10 @@ app.get('/api/brands/:id', (req, res, next) => {
 app.get('/api/categories/:id', (req, res, next) => {
   try {
     const cid = parseInt(req.params.id);
-    const products = db.products.filter(p => p.category_id === cid).map(p => ({ ...p, like_count: db.likes.filter(l => l.product_id === p.id).length }));
+    // 预处理点赞计数
+    const likeCountMap = {};
+    db.likes.forEach(l => { likeCountMap[l.product_id] = (likeCountMap[l.product_id] || 0) + 1; });
+    const products = db.products.filter(p => p.category_id === cid).map(p => ({ ...p, like_count: likeCountMap[p.id] || 0 }));
     res.json({ id: cid, products });
   } catch (err) {
     next(err);
@@ -295,7 +300,16 @@ app.get('/api/weekly', (req, res, next) => {
 
 app.get('/api/leaderboard', (req, res, next) => {
   try {
-    const lb = db.users.filter(u => !u.is_admin).map(u => ({ username: u.username, score: db.likes.filter(l => l.user_id === u.id).length + db.comments.filter(c => c.user_id === u.id).length * 2 })).sort((a, b) => b.score - a.score).slice(0, 20);
+    // 预处理用户点赞和评论计数
+    const userLikeCount = {};
+    const userCommentCount = {};
+    db.likes.forEach(l => { userLikeCount[l.user_id] = (userLikeCount[l.user_id] || 0) + 1; });
+    db.comments.forEach(c => { userCommentCount[c.user_id] = (userCommentCount[c.user_id] || 0) + 1; });
+    
+    const lb = db.users.filter(u => !u.is_admin).map(u => ({ 
+      username: u.username, 
+      score: (userLikeCount[u.id] || 0) + (userCommentCount[u.id] || 0) * 2 
+    })).sort((a, b) => b.score - a.score).slice(0, 20);
     res.json(lb);
   } catch (err) {
     next(err);
@@ -304,7 +318,10 @@ app.get('/api/leaderboard', (req, res, next) => {
 
 app.get('/api/ranking', (req, res, next) => {
   try {
-    res.json(db.products.map(p => ({ ...p, like_count: db.likes.filter(l => l.product_id === p.id).length })).sort((a, b) => b.like_count - a.like_count));
+    // 预处理：建立点赞计数缓存
+    const likeCountMap = {};
+    db.likes.forEach(l => { likeCountMap[l.product_id] = (likeCountMap[l.product_id] || 0) + 1; });
+    res.json(db.products.map(p => ({ ...p, like_count: likeCountMap[p.id] || 0 })).sort((a, b) => b.like_count - a.like_count));
   } catch (err) {
     next(err);
   }
@@ -482,6 +499,12 @@ app.get('/api/products/search', (req, res, next) => {
     let { q, category_id, min_price, max_price, sort, page, limit } = req.query;
     let result = [...db.products];
     
+    // 预处理点赞和评论计数
+    const likeCountMap = {};
+    const commentCountMap = {};
+    db.likes.forEach(l => { likeCountMap[l.product_id] = (likeCountMap[l.product_id] || 0) + 1; });
+    db.comments.forEach(c => { commentCountMap[c.product_id] = (commentCountMap[c.product_id] || 0) + 1; });
+    
     // 关键字搜索 - 支持中英文和拼音模糊匹配
     if (q) {
       const searchTerm = q.toLowerCase().trim();
@@ -517,11 +540,7 @@ app.get('/api/products/search', (req, res, next) => {
         result.sort((a, b) => (b.price || 0) - (a.price || 0));
         break;
       case 'popular':
-        result.sort((a, b) => {
-          const aLikes = db.likes.filter(l => l.product_id === a.id).length;
-          const bLikes = db.likes.filter(l => l.product_id === b.id).length;
-          return bLikes - aLikes;
-        });
+        result.sort((a, b) => (likeCountMap[b.id] || 0) - (likeCountMap[a.id] || 0));
         break;
       case 'newest':
         result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -537,11 +556,11 @@ app.get('/api/products/search', (req, res, next) => {
     const start = (pageNum - 1) * pageSize;
     const paginatedResult = result.slice(start, start + pageSize);
     
-    // 添加喜欢数和评论数
+    // 添加喜欢数和评论数 (使用预处理缓存)
     const resultWithCounts = paginatedResult.map(p => ({
       ...p,
-      like_count: db.likes.filter(l => l.product_id === p.id).length,
-      comment_count: db.comments.filter(c => c.product_id === p.id).length
+      like_count: likeCountMap[p.id] || 0,
+      comment_count: commentCountMap[p.id] || 0
     }));
     
     res.json({
@@ -597,10 +616,14 @@ app.get('/api/products/suggestions', (req, res, next) => {
 // 获取热门搜索词
 app.get('/api/products/hot-searches', (req, res, next) => {
   try {
+    // 预处理点赞计数
+    const likeCountMap = {};
+    db.likes.forEach(l => { likeCountMap[l.product_id] = (likeCountMap[l.product_id] || 0) + 1; });
+    
     // 基于产品点赞数确定热门搜索词
     const productWithLikes = db.products.map(p => ({
       ...p,
-      like_count: db.likes.filter(l => l.product_id === p.id).length
+      like_count: likeCountMap[p.id] || 0
     }));
     
     const hotProducts = productWithLikes
