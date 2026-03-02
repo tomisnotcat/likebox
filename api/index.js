@@ -1334,4 +1334,115 @@ app.use((req, res) => {
   res.status(404).json({ error: 'API路由不存在' });
 });
 
+// ==================== 通知系统 ====================
+
+const notifications = [];
+
+app.get('/api/notifications', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.query.username);
+    if (!user) return res.json([]);
+    const userNotifs = notifications.filter(n => n.user_id === user.id).slice(0, 20);
+    res.json(userNotifs);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post('/api/notifications/read', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.body.username);
+    if (!user) return res.status(401).json({ error: '请先登录' });
+    notifications.forEach(n => { if (n.user_id === user.id) n.read = true; });
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ==================== 活动动态 ====================
+
+app.get('/api/feed', (req, res, next) => {
+  try {
+    const limit = parseInt(req.query.limit) || 20;
+    const feed = [];
+    
+    // 最近的点赞
+    db.likes.slice(-100).forEach(l => {
+      const user = db.users.find(u => u.id === l.user_id);
+      const product = db.products.find(p => p.id === l.product_id);
+      if (user && product) {
+        feed.push({ type: 'like', user: user.username, avatar: user.avatar, product: { id: product.id, name: product.name, image_url: product.image_url }, created_at: l.created_at });
+      }
+    });
+    
+    // 最近的评论
+    db.comments.slice(-50).forEach(c => {
+      const user = db.users.find(u => u.id === c.user_id);
+      const product = db.products.find(p => p.id === c.product_id);
+      if (user && product) {
+        feed.push({ type: 'comment', user: user.username, avatar: user.avatar, product: { id: product.id, name: product.name, image_url: product.image_url }, content: c.content, created_at: c.created_at });
+      }
+    });
+    
+    feed.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    res.json(feed.slice(0, limit));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ==================== 搜索建议 ====================
+
+app.get('/api/search/suggestions', (req, res, next) => {
+  try {
+    const q = (req.query.q || '').toLowerCase();
+    if (q.length < 1) return res.json([]);
+    
+    const suggestions = new Set();
+    db.products.forEach(p => {
+      if (p.name.toLowerCase().includes(q)) suggestions.add(p.name);
+    });
+    categories.forEach(c => {
+      if (c.name.toLowerCase().includes(q)) suggestions.add(c.name);
+    });
+    
+    res.json(Array.from(suggestions).slice(0, 10));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ==================== 产品评分分析 ====================
+
+app.get('/api/products/:id/analysis', (req, res, next) => {
+  try {
+    const product = db.products.find(p => p.id === parseInt(req.params.id));
+    if (!product) return res.status(404).json({ error: '产品不存在' });
+    
+    const productLikes = db.likes.filter(l => l.product_id === product.id);
+    const productComments = db.comments.filter(c => c.product_id === product.id);
+    
+    // 评论情感分析 (简单关键词)
+    let positive = 0, negative = 0, neutral = 0;
+    const keywords = { positive: ['好', '喜欢', '棒', '推荐', '不错', '赞', '优质'], negative: ['差', '烂', '失望', '不推荐', '退货'] };
+    productComments.forEach(c => {
+      const content = c.content || '';
+      let hasPos = keywords.positive.some(k => content.includes(k));
+      let hasNeg = keywords.negative.some(k => content.includes(k));
+      if (hasPos) positive++;
+      else if (hasNeg) negative++;
+      else neutral++;
+    });
+    
+    res.json({
+      product: { id: product.id, name: product.name },
+      stats: { likes: productLikes.length, comments: productComments.length },
+      sentiment: { positive, negative, neutral }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = app;
