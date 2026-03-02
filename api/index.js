@@ -369,6 +369,26 @@ app.get('/api/my-stats-v4', (req, res, next) => {
 
 });
 
+// 用户画像统计
+app.get('/api/user/profile', (req, res, next) => {
+  try {
+    const username = req.query.username;
+    const user = db.users.find(u => u.username === username);
+    if (!user) return res.status(404).json({ error: '用户不存在' });
+    const userLikes = db.likes.filter(l => l.user_id === user.id);
+    const userComments = db.comments.filter(c => c.user_id === user.id);
+    const userFavorites = db.favorites.filter(f => f.user_id === user.id);
+    const userFollowing = db.follows ? db.follows.filter(f => f.follower_id === user.id) : [];
+    const userFollowers = db.follows ? db.follows.filter(f => f.following_id === user.id) : [];
+    res.json({
+      user: { id: user.id, username: user.username, avatar: user.avatar, bio: user.bio, points: user.points, checkin_days: user.checkin_days },
+      stats: { total_likes: userLikes.length, total_comments: userComments.length, total_favorites: userFavorites.length, following_count: userFollowing.length, followers_count: userFollowers.length }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 app.get('/api/user/:username', (req, res, next) => {
   try {
     const user = db.users.find(u => u.username === req.params.username);
