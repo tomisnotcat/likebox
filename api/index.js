@@ -337,6 +337,30 @@ app.get('/api/ranking', (req, res, next) => {
   } catch (err) {
     next(err);
   }
+// ==================== 用户画像/数据分析面板 ====================
+
+// 获取用户画像统计
+app.get('/api/user/profile-data', (req, res, next) => {
+  try {
+    const username = req.query.username;
+    const user = db.users.find(u => u.username === username);
+    if (!user) return res.status(404).json({ error: '用户不存在' });
+    
+    const userLikes = db.likes.filter(l => l.user_id === user.id);
+    const userComments = db.comments.filter(c => c.user_id === user.id);
+    const userFavorites = db.favorites.filter(f => f.user_id === user.id);
+    const userFollowing = db.follows ? db.follows.filter(f => f.follower_id === user.id) : [];
+    const userFollowers = db.follows ? db.follows.filter(f => f.following_id === user.id) : [];
+    
+    res.json({
+      user: { id: user.id, username: user.username, avatar: user.avatar, bio: user.bio, points: user.points, checkin_days: user.checkin_days },
+      stats: { total_likes: userLikes.length, total_comments: userComments.length, total_favorites: userFavorites.length, following_count: userFollowing.length, followers_count: userFollowers.length }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 });
 
 app.get('/api/user/:username', (req, res, next) => {
@@ -346,6 +370,8 @@ app.get('/api/user/:username', (req, res, next) => {
     res.json({ id: user.id, username: user.username, avatar: user.avatar, bio: user.bio, is_admin: user.is_admin, points: user.points, checkin_days: user.checkin_days });
   } catch (err) {
     next(err);
+  }
+});
   }
 });
 
@@ -696,87 +722,6 @@ app.get('/api/products/hot-searches', (req, res, next) => {
     next(err);
   }
 });
-
-// ==================== 用户画像/数据分析面板 ====================
-
-// 获取用户画像统计
-app.get('/api/user/profile-data', (req, res, next) => {
-  try {
-    const username = req.query.username;
-    const user = db.users.find(u => u.username === username);
-    if (!user) return res.status(404).json({ 
-      error: '用户不存在',
-      debug: { searched: username, dbUsersCount: db.users.length, firstUser: db.users[0]?.username }
-    });
-    
-    // 预处理统计数据
-    const userLikes = db.likes.filter(l => l.user_id === user.id);
-    const userComments = db.comments.filter(c => c.user_id === user.id);
-    const userFavorites = db.favorites.filter(f => f.user_id === user.id);
-    const userFollowing = db.follows ? db.follows.filter(f => f.follower_id === user.id) : [];
-    const userFollowers = db.follows ? db.follows.filter(f => f.following_id === user.id) : [];
-    
-    // 用户活动统计
-    const likedProducts = userLikes.map(l => db.products.find(p => p.id === l.product_id)).filter(p => p);
-    const favoriteProducts = userFavorites.map(f => db.products.find(p => p.id === f.product_id)).filter(p => p);
-    
-    // 分类偏好
-    const categoryStats = {};
-    likedProducts.forEach(p => {
-      const cat = p.category_id;
-      categoryStats[cat] = (categoryStats[cat] || 0) + 1;
-    });
-    
-    // 价格区间偏好
-    const priceRanges = { '0-50': 0, '50-200': 0, '200-500': 0, '500+': 0 };
-    likedProducts.forEach(p => {
-      const price = p.price || 0;
-      if (price < 50) priceRanges['0-50']++;
-      else if (price < 200) priceRanges['50-200']++;
-      else if (price < 500) priceRanges['200-500']++;
-      else priceRanges['500+']++;
-    });
-    
-    // 活动趋势（最近7天）
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    const recentLikes = userLikes.filter(l => new Date(l.created_at) > weekAgo).length;
-    const recentComments = userComments.filter(c => new Date(c.created_at) > weekAgo).length;
-    
-    res.json({
-      user: {
-        id: user.id,
-        username: user.username,
-        avatar: user.avatar,
-        bio: user.bio,
-        points: user.points,
-        checkin_days: user.checkin_days,
-        created_at: user.created_at
-      },
-      stats: {
-        total_likes: userLikes.length,
-        total_comments: userComments.length,
-        total_favorites: userFavorites.length,
-        following_count: userFollowing.length,
-        followers_count: userFollowers.length
-      },
-      preferences: {
-        favorite_categories: categoryStats,
-        price_ranges: priceRanges
-      },
-      activity: {
-        recent_likes_7d: recentLikes,
-        recent_comments_7d: recentComments,
-        total_activity_7d: recentLikes + recentComments
-      },
-      recent_liked: likedProducts.slice(0, 5).map(p => ({ id: p.id, name: p.name, image_url: p.image_url })),
-      recent_favorites: favoriteProducts.slice(0, 5).map(p => ({ id: p.id, name: p.name, image_url: p.image_url }))
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
 // 获取全局数据分析（管理员）
 app.get('/api/admin/analytics', (req, res, next) => {
   try {
