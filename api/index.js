@@ -343,8 +343,9 @@ app.get('/api/ranking', (req, res, next) => {
 app.get('/api/user/profile-data', (req, res, next) => {
   try {
     const username = req.query.username;
+    console.log('[PROFILE-DATA] Looking for:', username);
     const user = db.users.find(u => u.username === username);
-    if (!user) return res.status(404).json({ error: '用户不存在' });
+    if (!user) return res.status(404).json({ error: '用户不存在', v:3 });
     
     const userLikes = db.likes.filter(l => l.user_id === user.id);
     const userComments = db.comments.filter(c => c.user_id === user.id);
