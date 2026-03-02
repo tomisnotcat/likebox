@@ -1221,6 +1221,114 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
+// ==================== 新增功能 ====================
+
+// 热门产品 (Trending)
+app.get('/api/trending', (req, res, next) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    const likeCountMap = {};
+    const commentCountMap = {};
+    db.likes.forEach(l => { likeCountMap[l.product_id] = (likeCountMap[l.product_id] || 0) + 1; });
+    db.comments.forEach(c => { commentCountMap[c.product_id] = (commentCountMap[c.product_id] || 0) + 1; });
+    
+    const trending = db.products.map(p => ({
+      id: p.id,
+      name: p.name,
+      image_url: p.image_url,
+      price: p.price,
+      like_count: likeCountMap[p.id] || 0,
+      comment_count: commentCountMap[p.id] || 0,
+      score: ((likeCountMap[p.id] || 0) * 2) + ((commentCountMap[p.id] || 0) * 3)
+    })).sort((a, b) => b.score - a.score).slice(0, limit);
+    
+    res.json(trending);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 产品推荐 (基于分类热度)
+app.get('/api/recommend', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.query.username);
+    const limit = parseInt(req.query.limit) || 10;
+    
+    let preferredCategories = [];
+    if (user) {
+      const userLikes = db.likes.filter(l => l.user_id === user.id);
+      const likedProducts = userLikes.map(l => db.products.find(p => p.id === l.product_id)).filter(p => p);
+      const catCount = {};
+      likedProducts.forEach(p => { catCount[p.category_id] = (catCount[p.category_id] || 0) + 1; });
+      preferredCategories = Object.entries(catCount).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([cat]) => parseInt(cat));
+    }
+    
+    const likeCountMap = {};
+    db.likes.forEach(l => { likeCountMap[l.product_id] = (likeCountMap[l.product_id] || 0) + 1; });
+    
+    let products = db.products;
+    if (preferredCategories.length > 0) {
+      const preferred = products.filter(p => preferredCategories.includes(p.category_id));
+      const others = products.filter(p => !preferredCategories.includes(p.category_id));
+      const scored = others.map(p => ({ ...p, score: (likeCountMap[p.id] || 0) })).sort((a, b) => b.score - a.score);
+      products = [...preferred, ...scored];
+    }
+    
+    res.json(products.slice(0, limit).map(p => ({
+      id: p.id, name: p.name, image_url: p.image_url, price: p.price,
+      like_count: likeCountMap[p.id] || 0
+    })));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 用户活动时间线
+app.get('/api/user/timeline', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.query.username);
+    if (!user) return res.status(404).json({ error: '用户不存在' });
+    
+    const userLikes = db.likes.filter(l => l.user_id === user.id).map(l => {
+      const product = db.products.find(p => p.id === l.product_id);
+      return { type: 'like', product, created_at: l.created_at };
+    });
+    
+    const userComments = db.comments.filter(c => c.user_id === user.id).map(c => {
+      const product = db.products.find(p => p.id === c.product_id);
+      return { type: 'comment', product, content: c.content, created_at: c.created_at };
+    });
+    
+    const timeline = [...userLikes, ...userComments]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 50);
+    
+    res.json(timeline);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 每日精选
+app.get('/api/daily', (req, res, next) => {
+  try {
+    const today = new Date().toDateString();
+    const seed = today.split(' ').reduce((a, b) => a + b.charCodeAt(0), 0);
+    const likeCountMap = {};
+    db.likes.forEach(l => { likeCountMap[l.product_id] = (likeCountMap[l.product_id] || 0) + 1; });
+    
+    const products = db.products.map(p => ({ ...p, score: (likeCountMap[p.id] || 0) + Math.random() * 100 }));
+    products.sort((a, b) => b.score - a.score);
+    
+    res.json({
+      date: today,
+      picks: products.slice(0, 5).map(p => ({ id: p.id, name: p.name, image_url: p.image_url, price: p.price }))
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // 404 处理
 app.use((req, res) => {
   res.status(404).json({ error: 'API路由不存在' });
