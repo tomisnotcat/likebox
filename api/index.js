@@ -700,7 +700,7 @@ app.get('/api/products/hot-searches', (req, res, next) => {
 // ==================== 用户画像/数据分析面板 ====================
 
 // 获取用户画像统计
-app.get('/api/user/profile', (req, res, next) => {
+app.get('/api/user/analysis', (req, res, next) => {
   try {
     const username = req.query.username;
     // Try both db.users and direct users array for compatibility
