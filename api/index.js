@@ -697,6 +697,480 @@ app.get('/api/products/hot-searches', (req, res, next) => {
   }
 });
 
+// ==================== 用户画像/数据分析面板 ====================
+
+// 获取用户画像统计
+app.get('/api/user/profile', (req, res, next) => {
+  try {
+    const username = req.query.username;
+    // Try both db.users and direct users array for compatibility
+    const user = (db && db.users ? db.users : users).find(u => u.username === username);
+    if (!user) return res.status(404).json({ error: '用户不存在' });
+    
+    // 预处理统计数据
+    const userLikes = db.likes.filter(l => l.user_id === user.id);
+    const userComments = db.comments.filter(c => c.user_id === user.id);
+    const userFavorites = db.favorites.filter(f => f.user_id === user.id);
+    const userFollowing = db.follows ? db.follows.filter(f => f.follower_id === user.id) : [];
+    const userFollowers = db.follows ? db.follows.filter(f => f.following_id === user.id) : [];
+    
+    // 用户活动统计
+    const likedProducts = userLikes.map(l => db.products.find(p => p.id === l.product_id)).filter(p => p);
+    const favoriteProducts = userFavorites.map(f => db.products.find(p => p.id === f.product_id)).filter(p => p);
+    
+    // 分类偏好
+    const categoryStats = {};
+    likedProducts.forEach(p => {
+      const cat = p.category_id;
+      categoryStats[cat] = (categoryStats[cat] || 0) + 1;
+    });
+    
+    // 价格区间偏好
+    const priceRanges = { '0-50': 0, '50-200': 0, '200-500': 0, '500+': 0 };
+    likedProducts.forEach(p => {
+      const price = p.price || 0;
+      if (price < 50) priceRanges['0-50']++;
+      else if (price < 200) priceRanges['50-200']++;
+      else if (price < 500) priceRanges['200-500']++;
+      else priceRanges['500+']++;
+    });
+    
+    // 活动趋势（最近7天）
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const recentLikes = userLikes.filter(l => new Date(l.created_at) > weekAgo).length;
+    const recentComments = userComments.filter(c => new Date(c.created_at) > weekAgo).length;
+    
+    res.json({
+      user: {
+        id: user.id,
+        username: user.username,
+        avatar: user.avatar,
+        bio: user.bio,
+        points: user.points,
+        checkin_days: user.checkin_days,
+        created_at: user.created_at
+      },
+      stats: {
+        total_likes: userLikes.length,
+        total_comments: userComments.length,
+        total_favorites: userFavorites.length,
+        following_count: userFollowing.length,
+        followers_count: userFollowers.length
+      },
+      preferences: {
+        favorite_categories: categoryStats,
+        price_ranges: priceRanges
+      },
+      activity: {
+        recent_likes_7d: recentLikes,
+        recent_comments_7d: recentComments,
+        total_activity_7d: recentLikes + recentComments
+      },
+      recent_liked: likedProducts.slice(0, 5).map(p => ({ id: p.id, name: p.name, image_url: p.image_url })),
+      recent_favorites: favoriteProducts.slice(0, 5).map(p => ({ id: p.id, name: p.name, image_url: p.image_url }))
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 获取全局数据分析（管理员）
+app.get('/api/admin/analytics', (req, res, next) => {
+  try {
+    // 预处理数据
+    const userLikeCount = {};
+    const userCommentCount = {};
+    const productLikeCount = {};
+    const productCommentCount = {};
+    
+    db.likes.forEach(l => {
+      userLikeCount[l.user_id] = (userLikeCount[l.user_id] || 0) + 1;
+      productLikeCount[l.product_id] = (productLikeCount[l.product_id] || 0) + 1;
+    });
+    db.comments.forEach(c => {
+      userCommentCount[c.user_id] = (userCommentCount[c.user_id] || 0) + 1;
+      productCommentCount[c.product_id] = (productCommentCount[c.product_id] || 0) + 1;
+    });
+    
+    // 用户活跃度分布
+    const activeUsers = Object.keys(userLikeCount).length;
+    const activeCommenters = Object.keys(userCommentCount).length;
+    const inactiveUsers = db.users.length - activeUsers;
+    
+    // 产品热度排行
+    const productHeat = db.products.map(p => ({
+      id: p.id,
+      name: p.name,
+      likes: productLikeCount[p.id] || 0,
+      comments: productCommentCount[p.id] || 0,
+      engagement: (productLikeCount[p.id] || 0) + (productCommentCount[p.id] || 0) * 2
+    })).sort((a, b) => b.engagement - a.engagement).slice(0, 10);
+    
+    // 分类热度
+    const categoryHeat = {};
+    db.products.forEach(p => {
+      if (!categoryHeat[p.category_id]) {
+        categoryHeat[p.category_id] = { products: 0, likes: 0, comments: 0 };
+      }
+      categoryHeat[p.category_id].products++;
+      categoryHeat[p.category_id].likes += productLikeCount[p.id] || 0;
+      categoryHeat[p.category_id].comments += productCommentCount[p.id] || 0;
+    });
+    
+    // 用户排行榜
+    const topUsers = db.users.filter(u => !u.is_admin).map(u => ({
+      username: u.username,
+      likes: userLikeCount[u.id] || 0,
+      comments: userCommentCount[u.id] || 0,
+      score: (userLikeCount[u.id] || 0) + (userCommentCount[u.id] || 0) * 2
+    })).sort((a, b) => b.score - a.score).slice(0, 10);
+    
+    // 时间分布（按小时）
+    const hourDistribution = Array(24).fill(0);
+    db.likes.forEach(l => {
+      const hour = new Date(l.created_at).getHours();
+      hourDistribution[hour]++;
+    });
+    db.comments.forEach(c => {
+      const hour = new Date(c.created_at).getHours();
+      hourDistribution[hour]++;
+    });
+    
+    res.json({
+      overview: {
+        total_users: db.users.length,
+        active_users: activeUsers,
+        active_commenters: activeCommenters,
+        inactive_users: inactiveUsers,
+        total_products: db.products.length,
+        total_likes: db.likes.length,
+        total_comments: db.comments.length,
+        total_favorites: db.favorites.length,
+        avg_likes_per_user: (db.likes.length / db.users.length).toFixed(2),
+        avg_comments_per_user: (db.comments.length / db.users.length).toFixed(2)
+      },
+      top_products: productHeat,
+      top_users: topUsers,
+      category_heatmap: categoryHeat,
+      hour_distribution: hourDistribution.map((count, hour) => ({ hour, count }))
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ==================== 分享链接追踪 ====================
+
+const shareLinks = []; // 分享链接追踪数据
+const SHARE_CODE_LENGTH = 8;
+
+// 生成分享码
+function generateShareCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let code = '';
+  for (let i = 0; i < SHARE_CODE_LENGTH; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+// 创建分享链接
+app.post('/api/share', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.body.username);
+    if (!user) return res.status(401).json({ error: '请先登录' });
+    
+    const { product_id, type = 'product' } = req.body;
+    const shareCode = generateShareCode();
+    
+    const shareLink = {
+      id: shareLinks.length + 1,
+      code: shareCode,
+      user_id: user.id,
+      username: user.username,
+      product_id: product_id ? parseInt(product_id) : null,
+      type: type,
+      created_at: new Date().toISOString(),
+      clicks: 0,
+      conversions: 0
+    };
+    
+    shareLinks.push(shareLink);
+    
+    const baseUrl = req.headers.origin || 'https://likebox.vercel.app';
+    res.json({
+      success: true,
+      code: shareCode,
+      url: `${baseUrl}/share/${shareCode}`,
+      short_code: shareCode
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 解析分享链接
+app.get('/api/share/:code', (req, res, next) => {
+  try {
+    const code = req.params.code;
+    const shareLink = shareLinks.find(s => s.code === code);
+    
+    if (!shareLink) {
+      // 尝试作为产品ID处理
+      const productId = parseInt(code);
+      if (!isNaN(productId)) {
+        const product = db.products.find(p => p.id === productId);
+        if (product) {
+          return res.json({
+            type: 'product',
+            product: {
+              id: product.id,
+              name: product.name,
+              image_url: product.image_url,
+              description: product.description
+            }
+          });
+        }
+      }
+      return res.status(404).json({ error: '分享链接不存在' });
+    }
+    
+    // 增加点击数
+    shareLink.clicks++;
+    
+    const result = {
+      type: shareLink.type,
+      shared_by: shareLink.username,
+      created_at: shareLink.created_at,
+      clicks: shareLink.clicks
+    };
+    
+    if (shareLink.product_id) {
+      const product = db.products.find(p => p.id === shareLink.product_id);
+      if (product) {
+        result.product = {
+          id: product.id,
+          name: product.name,
+          image_url: product.image_url,
+          description: product.description
+        };
+      }
+    }
+    
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 追踪转化（点赞/收藏/评论）
+app.post('/api/share/:code/track', (req, res, next) => {
+  try {
+    const code = req.params.code;
+    const shareLink = shareLinks.find(s => s.code === code);
+    
+    if (!shareLink) {
+      return res.status(404).json({ error: '分享链接不存在' });
+    }
+    
+    const { action, product_id } = req.body;
+    
+    // 记录转化
+    if (action === 'like' || action === 'favorite' || action === 'comment') {
+      shareLink.conversions++;
+    }
+    
+    res.json({
+      success: true,
+      code: code,
+      action: action,
+      total_clicks: shareLink.clicks,
+      total_conversions: shareLink.conversions
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 获取我的分享统计
+app.get('/api/share/stats', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.query.username);
+    if (!user) return res.status(401).json({ error: '请先登录' });
+    
+    const myShares = shareLinks.filter(s => s.user_id === user.id);
+    const totalClicks = myShares.reduce((sum, s) => sum + s.clicks, 0);
+    const totalConversions = myShares.reduce((sum, s) => sum + s.conversions, 0);
+    
+    res.json({
+      total_shares: myShares.length,
+      total_clicks: totalClicks,
+      total_conversions: totalConversions,
+      conversion_rate: totalClicks > 0 ? ((totalConversions / totalClicks) * 100).toFixed(2) + '%' : '0%',
+      shares: myShares.map(s => ({
+        code: s.code,
+        type: s.type,
+        product_id: s.product_id,
+        clicks: s.clicks,
+        conversions: s.conversions,
+        created_at: s.created_at
+      }))
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ==================== 批量导入产品 ====================
+
+// 批量添加产品（管理员）
+app.post('/api/admin/products/batch', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.body.username);
+    if (!user) return res.status(401).json({ error: '请先登录' });
+    if (!user.is_admin) return res.status(403).json({ error: '需要管理员权限' });
+    
+    const { products } = req.body;
+    if (!Array.isArray(products)) {
+      return res.status(400).json({ error: '产品列表格式错误' });
+    }
+    
+    if (products.length === 0) {
+      return res.status(400).json({ error: '产品列表不能为空' });
+    }
+    
+    if (products.length > 100) {
+      return res.status(400).json({ error: '单次最多导入100个产品' });
+    }
+    
+    const addedProducts = [];
+    const errors = [];
+    
+    products.forEach((p, index) => {
+      try {
+        // 验证必填字段
+        if (!p.name || !p.name.trim()) {
+          errors.push({ index, error: '产品名称不能为空' });
+          return;
+        }
+        
+        const newProduct = {
+          id: db.products.length + 1 + addedProducts.length,
+          name: p.name.trim(),
+          description: p.description || '',
+          image_url: p.image_url || '',
+          category_id: p.category_id || 401,
+          tags: p.tags || '',
+          price: parseFloat(p.price) || 0,
+          created_at: new Date().toISOString()
+        };
+        
+        db.products.push(newProduct);
+        addedProducts.push(newProduct);
+      } catch (e) {
+        errors.push({ index, error: e.message });
+      }
+    });
+    
+    res.json({
+      success: true,
+      added_count: addedProducts.length,
+      products: addedProducts,
+      errors: errors
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 批量删除产品（管理员）
+app.delete('/api/admin/products/batch', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.body.username);
+    if (!user) return res.status(401).json({ error: '请先登录' });
+    if (!user.is_admin) return res.status(403).json({ error: '需要管理员权限' });
+    
+    const { product_ids } = req.body;
+    if (!Array.isArray(product_ids) || product_ids.length === 0) {
+      return res.status(400).json({ error: '产品ID列表格式错误' });
+    }
+    
+    const idsToDelete = product_ids.map(id => parseInt(id));
+    const originalCount = db.products.length;
+    
+    db.products = db.products.filter(p => !idsToDelete.includes(p.id));
+    
+    // 同时删除相关的点赞、评论、收藏
+    db.likes = db.likes.filter(l => !idsToDelete.includes(l.product_id));
+    db.comments = db.comments.filter(c => !idsToDelete.includes(c.product_id));
+    db.favorites = db.favorites.filter(f => !idsToDelete.includes(f.product_id));
+    
+    const deletedCount = originalCount - db.products.length;
+    
+    res.json({
+      success: true,
+      deleted_count: deletedCount,
+      remaining_products: db.products.length
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 批量更新产品（管理员）
+app.put('/api/admin/products/batch', (req, res, next) => {
+  try {
+    const user = db.users.find(u => u.username === req.body.username);
+    if (!user) return res.status(401).json({ error: '请先登录' });
+    if (!user.is_admin) return res.status(403).json({ error: '需要管理员权限' });
+    
+    const { updates } = req.body;
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return res.status(400).json({ error: '更新列表格式错误' });
+    }
+    
+    const updatedProducts = [];
+    const errors = [];
+    
+    updates.forEach((u, index) => {
+      try {
+        if (!u.id) {
+          errors.push({ index, error: '产品ID不能为空' });
+          return;
+        }
+        
+        const product = db.products.find(p => p.id === parseInt(u.id));
+        if (!product) {
+          errors.push({ index, error: '产品不存在' });
+          return;
+        }
+        
+        // 更新字段
+        if (u.name !== undefined) product.name = u.name;
+        if (u.description !== undefined) product.description = u.description;
+        if (u.image_url !== undefined) product.image_url = u.image_url;
+        if (u.category_id !== undefined) product.category_id = parseInt(u.category_id);
+        if (u.tags !== undefined) product.tags = u.tags;
+        if (u.price !== undefined) product.price = parseFloat(u.price);
+        
+        updatedProducts.push(product);
+      } catch (e) {
+        errors.push({ index, error: e.message });
+      }
+    });
+    
+    res.json({
+      success: true,
+      updated_count: updatedProducts.length,
+      products: updatedProducts,
+      errors: errors
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ==================== 统一错误处理 ====================
 
 // 数据验证错误处理
