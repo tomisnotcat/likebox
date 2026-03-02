@@ -703,14 +703,11 @@ app.get('/api/products/hot-searches', (req, res, next) => {
 app.get('/api/user/analysis', (req, res, next) => {
   try {
     const username = req.query.username;
-    // 直接使用 db.users
-    let userList = [];
-    if (db && db.users) {
-      userList = db.users;
-    }
-    console.log('[analysis] db.users length:', userList.length);
-    const user = userList.find(u => u.username === username);
-    if (!user) return res.status(404).json({ error: '用户不存在' });
+    const user = db.users.find(u => u.username === username);
+    if (!user) return res.status(404).json({ 
+      error: '用户不存在',
+      debug: { searched: username, dbUsersCount: db.users.length, firstUser: db.users[0]?.username }
+    });
     
     // 预处理统计数据
     const userLikes = db.likes.filter(l => l.user_id === user.id);
