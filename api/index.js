@@ -130,6 +130,11 @@ const defaultData = {
 
 let db = { ...defaultData };
 
+// Test route
+app.get('/api/test-route', (req, res) => {
+  res.json({ success: true, message: 'Route works!' });
+});
+
 app.get('/api/products', (req, res, next) => {
   try {
     // 预处理：建立点赞和评论计数缓存 O(n)
