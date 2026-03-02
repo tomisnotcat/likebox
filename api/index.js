@@ -703,17 +703,13 @@ app.get('/api/products/hot-searches', (req, res, next) => {
 app.get('/api/user/analysis', (req, res, next) => {
   try {
     const username = req.query.username;
-    console.log('[analysis] username:', username);
-    console.log('[analysis] users type:', typeof users, Array.isArray(users));
-    console.log('[analysis] users length:', users?.length);
-    console.log('[analysis] db type:', typeof db, db ? 'object' : 'null');
-    console.log('[analysis] db.users type:', typeof db?.users, db?.users?.length);
-    
-    // Try both db.users and direct users array for compatibility
-    const searchIn = db && db.users ? db.users : users;
-    console.log('[analysis] searchIn length:', searchIn?.length);
-    const user = searchIn ? searchIn.find(u => u.username === username) : null;
-    console.log('[analysis] found user:', user ? user.username : 'null');
+    // 直接使用 db.users
+    let userList = [];
+    if (db && db.users) {
+      userList = db.users;
+    }
+    console.log('[analysis] db.users length:', userList.length);
+    const user = userList.find(u => u.username === username);
     if (!user) return res.status(404).json({ error: '用户不存在' });
     
     // 预处理统计数据
