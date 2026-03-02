@@ -130,6 +130,22 @@ const defaultData = {
 
 let db = { ...defaultData };
 
+// 简单内存缓存
+const cache = new Map();
+const CACHE_TTL = 5000; // 5秒缓存
+
+function getCached(key) {
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+  return null;
+}
+
+function setCache(key, data) {
+  cache.set(key, { data, timestamp: Date.now() });
+}
+
 // Test route
 app.get('/api/test-route', (req, res) => {
   res.json({ success: true, message: 'Route works!' });
@@ -137,6 +153,10 @@ app.get('/api/test-route', (req, res) => {
 
 app.get('/api/products', (req, res, next) => {
   try {
+    const cacheKey = JSON.stringify(req.query);
+    const cached = getCached(cacheKey);
+    if (cached) return res.json(cached);
+    
     // 预处理：建立点赞和评论计数缓存 O(n)
     const likeCountMap = {};
     const commentCountMap = {};
@@ -149,14 +169,61 @@ app.get('/api/products', (req, res, next) => {
       like_count: likeCountMap[p.id] || 0, 
       comment_count: commentCountMap[p.id] || 0
     }));
+    
+    // 搜索
     if (req.query.search) { 
       const s = req.query.search.toLowerCase(); 
       result = result.filter(p => p.name.toLowerCase().includes(s) || p.tags?.toLowerCase().includes(s)); 
     }
+    
+    // 分类筛选
     if (req.query.category_id) result = result.filter(p => p.category_id === parseInt(req.query.category_id));
+    
+    // 价格筛选
     if (req.query.min_price) result = result.filter(p => (p.price || 0) >= parseFloat(req.query.min_price));
     if (req.query.max_price) result = result.filter(p => (p.price || 0) <= parseFloat(req.query.max_price));
-    res.json(result.slice(0, parseInt(req.query.limit) || 50));
+    
+    // 评分筛选 (从description中提取)
+    if (req.query.min_rating) {
+      result = result.filter(p => {
+        const match = p.description?.match(/Rating: ([\d.]+)/);
+        const rating = match ? parseFloat(match[1]) : 0;
+        return rating >= parseFloat(req.query.min_rating);
+      });
+    }
+    
+    // Tags筛选
+    if (req.query.tags) {
+      const tags = req.query.tags.split(',').map(t => t.trim().toLowerCase());
+      result = result.filter(p => tags.some(t => p.tags?.toLowerCase().includes(t)));
+    }
+    
+    // 排序
+    const sort = req.query.sort;
+    if (sort === 'price_asc') result.sort((a, b) => (a.price || 0) - (b.price || 0));
+    else if (sort === 'price_desc') result.sort((a, b) => (b.price || 0) - (a.price || 0));
+    else if (sort === 'likes') result.sort((a, b) => b.like_count - a.like_count);
+    else if (sort === 'comments') result.sort((a, b) => b.comment_count - a.comment_count);
+    else if (sort === 'newest') result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    
+    // 分页
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const start = (page - 1) * limit;
+    const paginated = result.slice(start, start + limit);
+    
+    const response = {
+      data: paginated,
+      pagination: {
+        page,
+        limit,
+        total: result.length,
+        total_pages: Math.ceil(result.length / limit)
+      }
+    };
+    
+    setCache(cacheKey, response);
+    res.json(response);
   } catch (err) {
     next(err);
   }
