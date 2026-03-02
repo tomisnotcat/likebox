@@ -1329,11 +1329,6 @@ app.get('/api/daily', (req, res, next) => {
   }
 });
 
-// 404 处理
-app.use((req, res) => {
-  res.status(404).json({ error: 'API路由不存在' });
-});
-
 // ==================== 通知系统 ====================
 
 const notifications = [];
