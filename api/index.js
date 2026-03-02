@@ -340,7 +340,7 @@ app.get('/api/ranking', (req, res, next) => {
 // ==================== 用户画像/数据分析面板 ====================
 
 // 获取用户画像统计
-app.get('/api/user/profile-data', (req, res, next) => {
+app.get('/api/user/stats', (req, res, next) => {
   try {
     const username = req.query.username;
     console.log('[PROFILE-DATA] Looking for:', username);
