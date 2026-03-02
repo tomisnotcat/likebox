@@ -372,9 +372,6 @@ app.get('/api/user/:username', (req, res, next) => {
     next(err);
   }
 });
-  }
-});
-
 // 更新用户头像
 app.put('/api/user/avatar', (req, res, next) => {
   try {
