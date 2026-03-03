@@ -365,6 +365,9 @@ app.post('/api/products/:id/like', async (req, res, next) => {
     const user = db.users.find(u => u.username === req.body.username);
     if (!user) return res.status(401).json({ error: '请先登录' });
     const pid = parseInt(req.params.id);
+    if (!pid || pid <= 0) return res.status(400).json({ error: '无效的产品ID' });
+    const product = db.products.find(p => p.id === pid);
+    if (!product) return res.status(404).json({ error: '产品不存在' });
     const existing = db.likes.find(l => l.user_id === user.id && l.product_id === pid);
     if (existing) { db.likes = db.likes.filter(l => l !== existing); await saveToRedis(); res.json({ liked: false }); }
     else { db.likes.push({ id: db.likes.length + 1, user_id: user.id, product_id: pid, created_at: new Date().toISOString() }); await saveToRedis(); res.json({ liked: true }); }
@@ -388,6 +391,9 @@ app.post('/api/favorites', async (req, res, next) => {
     const user = db.users.find(u => u.username === req.body.username);
     if (!user) return res.status(401).json({ error: '请先登录' });
     const pid = parseInt(req.body.product_id);
+    if (!pid || pid <= 0) return res.status(400).json({ error: '无效的产品ID' });
+    const product = db.products.find(p => p.id === pid);
+    if (!product) return res.status(404).json({ error: '产品不存在' });
     const existing = db.favorites.find(f => f.user_id === user.id && f.product_id === pid);
     if (existing) { db.favorites = db.favorites.filter(f => f !== existing); await saveToRedis(); res.json({ favorited: false }); }
     else { db.favorites.push({ id: db.favorites.length + 1, user_id: user.id, product_id: pid, created_at: new Date().toISOString() }); await saveToRedis(); res.json({ favorited: true }); }
@@ -410,8 +416,12 @@ app.post('/api/comments', async (req, res, next) => {
     if (!user) return res.status(401).json({ error: '请先登录' });
     const content = (req.body.content || '').trim();
     if (!content) return res.status(400).json({ error: '评论内容不能为空' });
+    const productId = parseInt(req.body.product_id);
+    if (!productId || productId <= 0) return res.status(400).json({ error: '无效的产品ID' });
+    const product = db.products.find(p => p.id === productId);
+    if (!product) return res.status(404).json({ error: '产品不存在' });
     const escapedContent = escapeHtml(content);
-    const comment = { id: db.comments.length + 1, user_id: user.id, product_id: parseInt(req.body.product_id), content: escapedContent, created_at: new Date().toISOString() };
+    const comment = { id: db.comments.length + 1, user_id: user.id, product_id: productId, content: escapedContent, created_at: new Date().toISOString() };
     db.comments.push(comment);
     await saveToRedis();
     res.json({ ...comment, username: user.username });
