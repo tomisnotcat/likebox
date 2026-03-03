@@ -1,19 +1,22 @@
 const express = require('express');
 const cors = require('cors');
 
-// Redis 持久化支持 (使用 @vercel/kv)
-let kv = null;
+// Redis 持久化支持 (使用 Upstash)
+let redis = null;
 let useRedis = false;
 
 async function initRedis() {
-  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     try {
-      const { kv: vercelKv } = require('@vercel/kv');
-      kv = vercelKv;
+      const { Redis } = require('@upstash/redis');
+      redis = new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      });
       // 测试连接
-      await kv.get('test');
+      await redis.ping();
       useRedis = true;
-      console.log('Redis (Vercel KV) connected!');
+      console.log('Redis (Upstash) connected!');
     } catch (e) {
       console.log('Redis init failed, using memory:', e.message);
     }
@@ -21,18 +24,18 @@ async function initRedis() {
 }
 
 async function saveToRedis() {
-  if (!useRedis || !kv) return;
+  if (!useRedis || !redis) return;
   try {
-    await kv.set('likebox_db', JSON.stringify(db), { expiration: 86400 });
+    await redis.set('likebox_db', JSON.stringify(db), { EX: 86400 });
   } catch (e) {
     console.error('Save to Redis failed:', e.message);
   }
 }
 
 async function loadFromRedis() {
-  if (!useRedis || !kv) return null;
+  if (!useRedis || !redis) return null;
   try {
-    const data = await kv.get('likebox_db');
+    const data = await redis.get('likebox_db');
     return data ? JSON.parse(data) : null;
   } catch (e) {
     console.error('Load from Redis failed:', e.message);
