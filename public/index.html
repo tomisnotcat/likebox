@@ -173,6 +173,22 @@
     border-radius: 50%;
 }
 
+/* 焦点样式 - 无障碍 */
+*:focus-visible {
+    outline: 2px solid #4f46e5;
+    outline-offset: 2px;
+}
+.dark *:focus-visible {
+    outline-color: #818cf8;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+    outline: 2px solid #4f46e5;
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
 /* Smooth loading spinner */
 .loading-spinner {
     border: 3px solid #f3f3f3;
@@ -212,6 +228,10 @@
 <meta name="theme-color" content="#4f46e5">
 <link rel="manifest" href="/manifest.json"></head>
 <body class="bg-gray-50 min-h-screen">
+    <!-- Skip link for accessibility -->
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-indigo-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg">
+        跳到主要内容
+    </a>
     <div id="app">
         <!-- Toast 通知容器 -->
         <div class="toast-container">
@@ -274,7 +294,7 @@
             </div>
         </nav>
 
-        <main class="max-w-6xl mx-auto px-4 py-6">
+        <main id="main-content" class="max-w-6xl mx-auto px-4 py-6">
             <!-- Back to top button -->
             <button v-if="showBackToTop" @click="scrollToTop" class="fixed bottom-6 right-6 w-12 h-12 bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center z-40 hover:bg-indigo-700 transition-all transform hover:scale-110">
                 <i class="fas fa-arrow-up"></i>
