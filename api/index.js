@@ -92,28 +92,8 @@ const fakeStoreProducts = [
 ];
 
 function generateUsers() {
+  // 只保留演示账号，无假数据
   const users = [{ id: 1, username: 'demo', password: '123456', is_admin: true, avatar: '', bio: '演示账号', created_at: '2024-01-01T00:00:00.000Z', points: 0, last_checkin: null, checkin_days: 0 }];
-  const surnames = ['张', '李', '王', '刘', '陈', '杨', '赵', '黄', '周', '吴', '徐', '孙', '胡', '朱', '高', '林', '何', '郭', '马', '罗', '梁', '宋', '郑', '谢', '韩', '唐'];
-  const names = ['伟', '芳', '娜', '敏', '静', '丽', '强', '磊', '军', '洋', '勇', '艳', '杰', '涛', '明', '超', '秀英', '华', '鑫', '宇', '鹏', '辉', '波', '峰', '龙', '凤', '梅', '兰'];
-  const nicks = ['星辰', '追风', '漫步', '独行', '追梦', '小米', '温暖', '静待', '岁月', '时光', '北极', '阳光', '快乐', '自由', '青春'];
-  for (let i = 0; i < 1000; i++) {
-    const surname = surnames[i % surnames.length];
-    const name = names[i % names.length];
-    const nick = nicks[i % nicks.length];
-    const username = (i % 3 === 0) ? nick + (i + 100) : surname + name;
-    users.push({
-      id: i + 2,
-      username: username,
-      password: '123456',
-      is_admin: false,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${i}`,
-      bio: `我是用户${i+1}`,
-      created_at: new Date(2024, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString(),
-      points: Math.floor(Math.random() * 500),
-      last_checkin: Math.random() > 0.5 ? new Date().toDateString() : null,
-      checkin_days: Math.floor(Math.random() * 30)
-    });
-  }
   return users;
 }
 
@@ -136,18 +116,7 @@ const comments = [];
 const favorites = [];
 const follows = []; // 用户关注关系
 
-users.forEach((user) => {
-  if (user.is_admin) return;
-  const numLikes = 5 + Math.floor(Math.random() * 15);
-  for (let i = 0; i < numLikes; i++) {
-    likes.push({ id: likes.length + 1, user_id: user.id, product_id: 1 + Math.floor(Math.random() * products.length), created_at: new Date().toISOString() });
-  }
-  if (Math.random() > 0.7) favorites.push({ id: favorites.length + 1, user_id: user.id, product_id: 1 + Math.floor(Math.random() * products.length), created_at: new Date().toISOString() });
-  if (Math.random() > 0.8) {
-    const texts = ['很棒！', '非常喜欢', '质量不错', '推荐购买', '性价比高'];
-    comments.push({ id: comments.length + 1, user_id: user.id, product_id: 1 + Math.floor(Math.random() * products.length), content: texts[Math.floor(Math.random() * texts.length)], created_at: new Date().toISOString() });
-  }
-});
+// 不生成假数据，保持空数组
 
 const brands = [
   { id: 1, name: 'Apple', category_id: 601, logo: 'https://logo.clearbit.com/apple.com' },
