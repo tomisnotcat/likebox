@@ -1,5 +1,12 @@
 const express = require('express');
 const cors = require('cors');
+const bcrypt = require('bcryptjs');
+
+// HTML 转义防止 XSS
+function escapeHtml(text) {
+  if (!text) return text;
+  return text.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
 
 // Redis 持久化支持 (使用 Upstash)
 let redis = null;
@@ -93,7 +100,12 @@ const fakeStoreProducts = [
 
 function generateUsers() {
   // 只保留演示账号，无假数据
-  const users = [{ id: 1, username: 'demo', password: '123456', is_admin: true, avatar: '', bio: '演示账号', created_at: '2024-01-01T00:00:00.000Z', points: 0, last_checkin: null, checkin_days: 0 }];
+  const bcrypt = require('bcryptjs');
+
+// 预哈希 demo 账号密码
+const demoPasswordHash = bcrypt.hashSync('123456', 10);
+
+const users = [{ id: 1, username: 'demo', password: demoPasswordHash, is_admin: true, avatar: '', bio: '演示账号', created_at: '2024-01-01T00:00:00.000Z', points: 0, last_checkin: null, checkin_days: 0 }];
   return users;
 }
 
@@ -320,7 +332,8 @@ app.post('/api/comments', async (req, res, next) => {
   try {
     const user = db.users.find(u => u.username === req.body.username);
     if (!user) return res.status(401).json({ error: '请先登录' });
-    const comment = { id: db.comments.length + 1, user_id: user.id, product_id: parseInt(req.body.product_id), content: req.body.content, created_at: new Date().toISOString() };
+    const content = escapeHtml(req.body.content);
+    const comment = { id: db.comments.length + 1, user_id: user.id, product_id: parseInt(req.body.product_id), content: content, created_at: new Date().toISOString() };
     db.comments.push(comment);
     await saveToRedis();
     res.json({ ...comment, username: user.username });
@@ -343,7 +356,8 @@ app.post('/api/register', async (req, res, next) => {
     
     if (db.users.find(u => u.username === username)) return res.status(400).json({ error: '用户名已存在' });
     
-    const user = { id: db.users.length + 1, username: username, password: password, is_admin: false, avatar: '', bio: '', created_at: new Date().toISOString() };
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = { id: db.users.length + 1, username: username, password: hashedPassword, is_admin: false, avatar: '', bio: '', created_at: new Date().toISOString() };
     db.users.push(user);
     await saveToRedis();
     res.json({ success: true, username: user.username });
@@ -352,10 +366,12 @@ app.post('/api/register', async (req, res, next) => {
   }
 });
 
-app.post('/api/login', (req, res, next) => {
+app.post('/api/login', async (req, res, next) => {
   try {
-    const user = db.users.find(u => u.username === req.body.username && u.password === req.body.password);
+    const user = db.users.find(u => u.username === req.body.username);
     if (!user) return res.status(401).json({ error: '用户名或密码错误' });
+    const valid = await bcrypt.compare(req.body.password || '', user.password);
+    if (!valid) return res.status(401).json({ error: '用户名或密码错误' });
     res.json({ username: user.username, is_admin: user.is_admin, avatar: user.avatar });
   } catch (err) {
     next(err);
