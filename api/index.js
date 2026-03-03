@@ -271,6 +271,82 @@ app.get('/api/products', (req, res, next) => {
   }
 });
 
+// ==================== 产品搜索优化 ====================
+
+// 增强的产品搜索 - 支持更多筛选条件
+app.get('/api/products/search', (req, res, next) => {
+  try {
+    let { q, category_id, min_price, max_price, sort, page, limit } = req.query;
+    let result = [...db.products];
+    
+    const likeCountMap = {};
+    const commentCountMap = {};
+    db.likes.forEach(l => { likeCountMap[l.product_id] = (likeCountMap[l.product_id] || 0) + 1; });
+    db.comments.forEach(c => { commentCountMap[c.product_id] = (commentCountMap[c.product_id] || 0) + 1; });
+    
+    if (q) {
+      const searchTerm = q.toLowerCase().trim();
+      result = result.filter(p => {
+        const nameMatch = p.name.toLowerCase().includes(searchTerm);
+        const descMatch = p.description?.toLowerCase().includes(searchTerm);
+        const tagMatch = p.tags?.toLowerCase().includes(searchTerm);
+        const categoryMatch = p.category_id === parseInt(searchTerm);
+        return nameMatch || descMatch || tagMatch || categoryMatch;
+      });
+    }
+    
+    if (category_id) result = result.filter(p => p.category_id === parseInt(category_id));
+    if (min_price) result = result.filter(p => p.price >= parseFloat(min_price));
+    if (max_price) result = result.filter(p => p.price <= parseFloat(max_price));
+    
+    const sortKey = sort || 'default';
+    switch (sortKey) {
+      case 'price_asc': result.sort((a, b) => (a.price || 0) - (b.price || 0)); break;
+      case 'price_desc': result.sort((a, b) => (b.price || 0) - (a.price || 0)); break;
+      case 'popular': result.sort((a, b) => (likeCountMap[b.id] || 0) - (likeCountMap[a.id] || 0)); break;
+      case 'newest': result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); break;
+    }
+    
+    const pageNum = parseInt(page) || 1;
+    const pageSize = parseInt(limit) || 20;
+    const total = result.length;
+    const start = (pageNum - 1) * pageSize;
+    const paginatedResult = result.slice(start, start + pageSize);
+    
+    res.json({
+      data: paginatedResult.map(p => ({ ...p, like_count: likeCountMap[p.id] || 0, comment_count: commentCountMap[p.id] || 0 })),
+      pagination: { page: pageNum, limit: pageSize, total, total_pages: Math.ceil(total / pageSize) }
+    });
+  } catch (err) { next(err); }
+});
+
+// 获取搜索建议
+app.get('/api/products/suggestions', (req, res, next) => {
+  try {
+    const { q } = req.query;
+    if (!q || q.length < 1) return res.json([]);
+    const searchTerm = q.toLowerCase();
+    const suggestions = new Set();
+    db.products.forEach(p => { if (p.name.toLowerCase().includes(searchTerm)) suggestions.add(p.name); });
+    categories.forEach(c => {
+      if (c.name.toLowerCase().includes(searchTerm)) suggestions.add(c.name);
+      if (c.children) c.children.forEach(child => { if (child.name.toLowerCase().includes(searchTerm)) suggestions.add(child.name); });
+    });
+    res.json(Array.from(suggestions).slice(0, 10));
+  } catch (err) { next(err); }
+});
+
+// 获取热门搜索词
+app.get('/api/products/hot-searches', (req, res, next) => {
+  try {
+    const likeCountMap = {};
+    db.likes.forEach(l => { likeCountMap[l.product_id] = (likeCountMap[l.product_id] || 0) + 1; });
+    const hotProducts = db.products.map(p => ({ ...p, like_count: likeCountMap[p.id] || 0 }))
+      .sort((a, b) => b.like_count - a.like_count).slice(0, 10);
+    res.json(hotProducts.map(p => p.name));
+  } catch (err) { next(err); }
+});
+
 app.get('/api/products/:id', (req, res, next) => {
   try {
     const product = db.products.find(p => p.id === parseInt(req.params.id));
@@ -719,150 +795,6 @@ app.get('/api/follow/count/:username', (req, res, next) => {
   }
 });
 
-// ==================== 产品搜索优化 ====================
-
-// 增强的产品搜索 - 支持更多筛选条件
-app.get('/api/products/search', (req, res, next) => {
-  try {
-    let { q, category_id, min_price, max_price, sort, page, limit } = req.query;
-    let result = [...db.products];
-    
-    // 预处理点赞和评论计数
-    const likeCountMap = {};
-    const commentCountMap = {};
-    db.likes.forEach(l => { likeCountMap[l.product_id] = (likeCountMap[l.product_id] || 0) + 1; });
-    db.comments.forEach(c => { commentCountMap[c.product_id] = (commentCountMap[c.product_id] || 0) + 1; });
-    
-    // 关键字搜索 - 支持中英文和拼音模糊匹配
-    if (q) {
-      const searchTerm = q.toLowerCase().trim();
-      result = result.filter(p => {
-        const nameMatch = p.name.toLowerCase().includes(searchTerm);
-        const descMatch = p.description?.toLowerCase().includes(searchTerm);
-        const tagMatch = p.tags?.toLowerCase().includes(searchTerm);
-        const categoryMatch = p.category_id === parseInt(searchTerm);
-        return nameMatch || descMatch || tagMatch || categoryMatch;
-      });
-    }
-    
-    // 分类筛选
-    if (category_id) {
-      result = result.filter(p => p.category_id === parseInt(category_id));
-    }
-    
-    // 价格区间筛选
-    if (min_price) {
-      result = result.filter(p => p.price >= parseFloat(min_price));
-    }
-    if (max_price) {
-      result = result.filter(p => p.price <= parseFloat(max_price));
-    }
-    
-    // 排序
-    const sortKey = sort || 'default';
-    switch (sortKey) {
-      case 'price_asc':
-        result.sort((a, b) => (a.price || 0) - (b.price || 0));
-        break;
-      case 'price_desc':
-        result.sort((a, b) => (b.price || 0) - (a.price || 0));
-        break;
-      case 'popular':
-        result.sort((a, b) => (likeCountMap[b.id] || 0) - (likeCountMap[a.id] || 0));
-        break;
-      case 'newest':
-        result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-        break;
-      default:
-        break;
-    }
-    
-    // 分页
-    const pageNum = parseInt(page) || 1;
-    const pageSize = parseInt(limit) || 20;
-    const total = result.length;
-    const start = (pageNum - 1) * pageSize;
-    const paginatedResult = result.slice(start, start + pageSize);
-    
-    // 添加喜欢数和评论数 (使用预处理缓存)
-    const resultWithCounts = paginatedResult.map(p => ({
-      ...p,
-      like_count: likeCountMap[p.id] || 0,
-      comment_count: commentCountMap[p.id] || 0
-    }));
-    
-    res.json({
-      data: resultWithCounts,
-      pagination: {
-        page: pageNum,
-        limit: pageSize,
-        total,
-        total_pages: Math.ceil(total / pageSize)
-      }
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// 获取搜索建议
-app.get('/api/products/suggestions', (req, res, next) => {
-  try {
-    const { q } = req.query;
-    if (!q || q.length < 1) return res.json([]);
-    
-    const searchTerm = q.toLowerCase();
-    const suggestions = new Set();
-    
-    // 从产品名称中提取建议
-    db.products.forEach(p => {
-      if (p.name.toLowerCase().includes(searchTerm)) {
-        suggestions.add(p.name);
-      }
-    });
-    
-    // 从分类中提取建议
-    categories.forEach(c => {
-      if (c.name.toLowerCase().includes(searchTerm)) {
-        suggestions.add(c.name);
-      }
-      if (c.children) {
-        c.children.forEach(child => {
-          if (child.name.toLowerCase().includes(searchTerm)) {
-            suggestions.add(child.name);
-          }
-        });
-      }
-    });
-    
-    res.json(Array.from(suggestions).slice(0, 10));
-  } catch (err) {
-    next(err);
-  }
-});
-
-// 获取热门搜索词
-app.get('/api/products/hot-searches', (req, res, next) => {
-  try {
-    // 预处理点赞计数
-    const likeCountMap = {};
-    db.likes.forEach(l => { likeCountMap[l.product_id] = (likeCountMap[l.product_id] || 0) + 1; });
-    
-    // 基于产品点赞数确定热门搜索词
-    const productWithLikes = db.products.map(p => ({
-      ...p,
-      like_count: likeCountMap[p.id] || 0
-    }));
-    
-    const hotProducts = productWithLikes
-      .sort((a, b) => b.like_count - a.like_count)
-      .slice(0, 10);
-    
-    res.json(hotProducts.map(p => p.name));
-  } catch (err) {
-    next(err);
-  }
-});
 // 获取全局数据分析（管理员）
 app.get('/api/admin/analytics', (req, res, next) => {
   try {
