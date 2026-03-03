@@ -250,7 +250,7 @@ app.get('/api/products', (req, res, next) => {
     
     // 分页
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50;
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100);
     const start = (page - 1) * limit;
     const paginated = result.slice(start, start + limit);
     
@@ -308,7 +308,7 @@ app.get('/api/products/search', (req, res, next) => {
     }
     
     const pageNum = parseInt(page) || 1;
-    const pageSize = parseInt(limit) || 20;
+    const pageSize = Math.min(parseInt(limit) || 20, 100);
     const total = result.length;
     const start = (pageNum - 1) * pageSize;
     const paginatedResult = result.slice(start, start + pageSize);
