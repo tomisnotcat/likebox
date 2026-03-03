@@ -346,7 +346,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 <div v-for="product in products" :key="product.id" class="product-card bg-white rounded-xl shadow-sm overflow-hidden cursor-pointer" @click="viewProduct(product)">
                     <div v-if="product.image_url" class="h-44 sm:h-48 bg-gray-200 relative overflow-hidden group" @click.stop="toggleCompare(product)">
-                        <img loading="lazy" :src="product.image_url" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105">
+                        <img loading="lazy" :src="product.image_url" @error="handleImageError" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105">
                         <div class="card-image-overlay absolute inset-0"></div>
                         <button @click.stop="toggleFavorite(product); $event.stopPropagation()" class="absolute top-2 right-2 w-9 h-9 rounded-full bg-white/90 backdrop-blur flex items-center justify-center hover:scale-110 transition-transform btn-mobile">
                             <i class="fas fa-star transition-colors" :class="product.is_favorited ? 'text-yellow-500' : 'text-gray-400'"></i></button>
@@ -648,7 +648,13 @@
                     authForm: { username: '', password: '' },
                     authSubmitting: false,
                     productForm: { name: '', description: '', image_url: '', product_url: '', tags: '', category_id: 1, imagePreview: '' },
-                    newComment: '', compareList: [], showBackToTop: false, loadError: false
+                    newComment: '', compareList: [], showBackToTop: false, loadError: false, touchStartX: 0, searchTimer: null
+                }
+            },
+            watch: {
+                search(newVal) {
+                    clearTimeout(this.searchTimer);
+                    this.searchTimer = setTimeout(() => { this.loadProducts(); }, 500);
                 }
             },
             mounted() {
@@ -852,7 +858,13 @@
                     this.showToast('链接已复制到剪贴板', 'success');
                 },
                 formatDate(d) { return new Date(d).toLocaleDateString('zh-CN'); },
-                scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+                handleImageError(e) { e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="50%" x="50%" text-anchor="middle" font-size="40">📷</text></svg>'; },
+                scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); },
+                touchStart(e) { this.touchStartX = e.changedTouches[0].screenX; },
+                touchEnd(e) {
+                    const diff = e.changedTouches[0].screenX - this.touchStartX;
+                    if (Math.abs(diff) > 50) { if (diff > 0) this.goHome(); }
+                }
             }
         }).mount('#app');
     </script>
