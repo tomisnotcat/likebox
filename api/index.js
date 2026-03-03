@@ -426,6 +426,7 @@ app.post('/api/comments', async (req, res, next) => {
     if (!user) return res.status(401).json({ error: '请先登录' });
     const content = (req.body.content || '').trim();
     if (!content) return res.status(400).json({ error: '评论内容不能为空' });
+    if (content.length > 500) return res.status(400).json({ error: '评论内容最多500个字符' });
     const productId = parseInt(req.body.product_id);
     if (!productId || productId <= 0) return res.status(400).json({ error: '无效的产品ID' });
     const product = db.products.find(p => p.id === productId);
