@@ -1,9 +1,58 @@
 const express = require('express');
 const cors = require('cors');
 
+// Redis 持久化支持 (使用 @vercel/kv)
+let kv = null;
+let useRedis = false;
+
+async function initRedis() {
+  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+    try {
+      const { kv: vercelKv } = require('@vercel/kv');
+      kv = vercelKv;
+      // 测试连接
+      await kv.get('test');
+      useRedis = true;
+      console.log('Redis (Vercel KV) connected!');
+    } catch (e) {
+      console.log('Redis init failed, using memory:', e.message);
+    }
+  }
+}
+
+async function saveToRedis() {
+  if (!useRedis || !kv) return;
+  try {
+    await kv.set('likebox_db', JSON.stringify(db), { expiration: 86400 });
+  } catch (e) {
+    console.error('Save to Redis failed:', e.message);
+  }
+}
+
+async function loadFromRedis() {
+  if (!useRedis || !kv) return null;
+  try {
+    const data = await kv.get('likebox_db');
+    return data ? JSON.parse(data) : null;
+  } catch (e) {
+    console.error('Load from Redis failed:', e.message);
+    return null;
+  }
+}
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
+
+// 初始化 Redis 并加载数据
+initRedis().then(() => {
+  loadFromRedis().then(savedDb => {
+    if (savedDb) {
+      db = savedDb;
+      console.log('Loaded data from Redis');
+    }
+  });
+});
 
 const categories = [
   { id: 1, name: '数码', children: [{ id: 101, name: '手机' }, { id: 102, name: '电脑' }, { id: 103, name: '耳机' }] },
@@ -130,7 +179,16 @@ const defaultData = {
 
 let db = { ...defaultData };
 
-// 简单内存缓存
+// 定期保存到 Redis (每30秒)
+setInterval(() => {
+  if (useRedis) {
+    saveToRedis();
+  }
+}, 30000);
+
+// Graceful shutdown
+process.on('SIGTERM', () => { if (useRedis) saveToRedis(); });
+process.on('SIGINT', () => { if (useRedis) saveToRedis(); });
 const cache = new Map();
 const CACHE_TTL = 5000; // 5秒缓存
 
@@ -242,14 +300,14 @@ app.get('/api/products/:id', (req, res, next) => {
   }
 });
 
-app.post('/api/products/:id/like', (req, res, next) => {
+app.post('/api/products/:id/like', async (req, res, next) => {
   try {
     const user = db.users.find(u => u.username === req.body.username);
     if (!user) return res.status(401).json({ error: '请先登录' });
     const pid = parseInt(req.params.id);
     const existing = db.likes.find(l => l.user_id === user.id && l.product_id === pid);
-    if (existing) { db.likes = db.likes.filter(l => l !== existing); res.json({ liked: false }); }
-    else { db.likes.push({ id: db.likes.length + 1, user_id: user.id, product_id: pid, created_at: new Date().toISOString() }); res.json({ liked: true }); }
+    if (existing) { db.likes = db.likes.filter(l => l !== existing); await saveToRedis(); res.json({ liked: false }); }
+    else { db.likes.push({ id: db.likes.length + 1, user_id: user.id, product_id: pid, created_at: new Date().toISOString() }); await saveToRedis(); res.json({ liked: true }); }
   } catch (err) {
     next(err);
   }
@@ -265,14 +323,14 @@ app.get('/api/favorites', (req, res, next) => {
   }
 });
 
-app.post('/api/favorites', (req, res, next) => {
+app.post('/api/favorites', async (req, res, next) => {
   try {
     const user = db.users.find(u => u.username === req.body.username);
     if (!user) return res.status(401).json({ error: '请先登录' });
     const pid = parseInt(req.body.product_id);
     const existing = db.favorites.find(f => f.user_id === user.id && f.product_id === pid);
-    if (existing) { db.favorites = db.favorites.filter(f => f !== existing); res.json({ favorited: false }); }
-    else { db.favorites.push({ id: db.favorites.length + 1, user_id: user.id, product_id: pid, created_at: new Date().toISOString() }); res.json({ favorited: true }); }
+    if (existing) { db.favorites = db.favorites.filter(f => f !== existing); await saveToRedis(); res.json({ favorited: false }); }
+    else { db.favorites.push({ id: db.favorites.length + 1, user_id: user.id, product_id: pid, created_at: new Date().toISOString() }); await saveToRedis(); res.json({ favorited: true }); }
   } catch (err) {
     next(err);
   }
@@ -286,19 +344,20 @@ app.get('/api/products/:id/comments', (req, res, next) => {
   }
 });
 
-app.post('/api/comments', (req, res, next) => {
+app.post('/api/comments', async (req, res, next) => {
   try {
     const user = db.users.find(u => u.username === req.body.username);
     if (!user) return res.status(401).json({ error: '请先登录' });
     const comment = { id: db.comments.length + 1, user_id: user.id, product_id: parseInt(req.body.product_id), content: req.body.content, created_at: new Date().toISOString() };
     db.comments.push(comment);
+    await saveToRedis();
     res.json({ ...comment, username: user.username });
   } catch (err) {
     next(err);
   }
 });
 
-app.post('/api/register', (req, res, next) => {
+app.post('/api/register', async (req, res, next) => {
   try {
     const username = (req.body.username || '').trim();
     const password = req.body.password || '';
@@ -314,6 +373,7 @@ app.post('/api/register', (req, res, next) => {
     
     const user = { id: db.users.length + 1, username: username, password: password, is_admin: false, avatar: '', bio: '', created_at: new Date().toISOString() };
     db.users.push(user);
+    await saveToRedis();
     res.json({ success: true, username: user.username });
   } catch (err) {
     next(err);
@@ -503,7 +563,7 @@ app.put('/api/user/profile', (req, res, next) => {
   }
 });
 
-app.post('/api/checkin', (req, res, next) => {
+app.post('/api/checkin', async (req, res, next) => {
   try {
     const user = db.users.find(u => u.username === req.body.username);
     if (!user) return res.status(401).json({ error: '请先登录' });
@@ -511,6 +571,7 @@ app.post('/api/checkin', (req, res, next) => {
     user.points = (user.points || 0) + 10;
     user.last_checkin = new Date().toDateString();
     user.checkin_days = (user.checkin_days || 0) + 1;
+    await saveToRedis();
     res.json({ success: true, points: 10, total: user.points, days: user.checkin_days });
   } catch (err) {
     next(err);
@@ -580,7 +641,7 @@ app.get('/api/follow', (req, res, next) => {
 });
 
 // 关注用户
-app.post('/api/follow', (req, res, next) => {
+app.post('/api/follow', async (req, res, next) => {
   try {
     const user = db.users.find(u => u.username === req.body.username);
     if (!user) return res.status(401).json({ error: '请先登录' });
@@ -594,9 +655,11 @@ app.post('/api/follow', (req, res, next) => {
     
     if (existing) {
       db.follows = db.follows.filter(f => f !== existing);
+      await saveToRedis();
       res.json({ success: true, following: false, message: '已取消关注' });
     } else {
       db.follows.push({ id: db.follows.length + 1, follower_id: user.id, following_id: targetUser.id, created_at: new Date().toISOString() });
+      await saveToRedis();
       res.json({ success: true, following: true, message: '关注成功' });
     }
   } catch (err) {
