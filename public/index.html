@@ -93,6 +93,70 @@
     }
 }
 
+/* Toast 通知 */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.toast {
+    padding: 12px 20px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    animation: slideIn 0.3s ease;
+    max-width: 300px;
+}
+.toast-success { background: #10b981; }
+.toast-error { background: #ef4444; }
+.toast-info { background: #3b82f6; }
+.toast-warning { background: #f59e0b; }
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+.toast.removing {
+    animation: slideOut 0.3s ease forwards;
+}
+
+/* 空状态 */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+}
+.empty-state i {
+    font-size: 64px;
+    margin-bottom: 16px;
+}
+.dark .empty-state i {
+    color: #666;
+}
+
+/* 骨架屏改进 */
+.skeleton-card {
+    height: 280px;
+    border-radius: 12px;
+}
+.skeleton-text {
+    height: 16px;
+    border-radius: 4px;
+    margin: 8px 0;
+}
+.skeleton-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
 /* Smooth loading spinner */
 .loading-spinner {
     border: 3px solid #f3f3f3;
@@ -133,6 +197,13 @@
 <link rel="manifest" href="/manifest.json"></head>
 <body class="bg-gray-50 min-h-screen">
     <div id="app">
+        <!-- Toast 通知容器 -->
+        <div class="toast-container">
+            <div v-for="toast in toasts" :key="toast.id" :class="['toast', 'toast-' + toast.type, { removing: toast.removing }]" @click="removeToast(toast.id)">
+                <i :class="getToastIcon(toast.type)"></i> {{ toast.message }}
+            </div>
+        </div>
+        
         <nav :class="{ dark: darkMode }" class="bg-white shadow-sm sticky top-0 z-50" @touchstart="touchStart" @touchend="touchEnd">
             <div class="max-w-6xl mx-auto px-2 sm:px-4 py-2 sm:py-3 flex items-center justify-between">
                 <h1 class="text-lg sm:text-xl font-bold text-indigo-600 cursor-pointer px-2" @click="goHome"><i class="fas fa-heart"></i> <span class="hidden sm:inline">LikeBox</span></h1>
@@ -174,6 +245,9 @@
                     <button @click="showRanking = true; loadRanking()" class="text-gray-600 hover:text-indigo-600 p-2 btn-mobile" title="排行榜"><i class="fas fa-trophy"></i></button>
                     <button @click="showProductRanking = true; loadProductRanking()" class="text-gray-600 hover:text-indigo-600 p-2 btn-mobile" title="热门"><i class="fas fa-fire"></i></button>
                     <button v-if="isAdmin" @click="showAdmin = true; loadAdminStats()" class="text-gray-600 hover:text-indigo-600 p-2 btn-mobile" title="管理"><i class="fas fa-cog"></i></button>
+                    <button @click="toggleDarkMode" class="text-gray-600 hover:text-indigo-600 p-2 btn-mobile" :title="darkMode ? '切换亮色' : '切换暗色'">
+                        <i :class="darkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
+                    </button>
                     <template v-if="currentUser">
                         <button @click="showProfile = true; loadUserData()" class="text-gray-600 hover:text-indigo-600 p-2 btn-mobile" title="个人中心"><i class="fas fa-user"></i></button>
                         <span class="text-gray-600 text-sm hidden md:inline">{{ currentUser }}</span>
@@ -198,7 +272,7 @@
             </div>
 
             <!-- Empty State -->
-            <div v-else-if="products.length === 0" class="text-center py-16">
+            <div v-else-if="products.length === 0 && !loading" class="empty-state">
                 <div class="text-6xl mb-4">📦</div>
                 <h3 class="text-xl font-semibold text-gray-600 mb-2">暂无产品</h3>
                 <p class="text-gray-500 mb-4">还没有任何产品，快来添加第一个吧！</p>
@@ -537,6 +611,8 @@
             data() {
                 return {
                     loading: true,
+                    darkMode: localStorage.getItem('darkMode') === 'true',
+                    toasts: [],
                     currentUser: localStorage.getItem('username') || null,
                     currentUserId: null, isAdmin: false,
                     products: [], categories: [], brands: [], tags: [],
@@ -553,12 +629,44 @@
                 }
             },
             mounted() {
+                if (this.darkMode) document.documentElement.classList.add('dark');
                 this.loadCategories(); this.loadProducts(); this.loadTags(); this.loadBrands(); this.checkUser();
                 const urlParams = new URLSearchParams(window.location.search);
                 if (urlParams.get('product')) this.loadProductById(urlParams.get('product'));
                 if (urlParams.get('brand')) this.loadBrand(parseInt(urlParams.get('brand')));
             },
             methods: {
+                // Toast 通知
+                showToast(message, type = 'info') {
+                    const id = Date.now();
+                    this.toasts.push({ id, message, type, removing: false });
+                    setTimeout(() => {
+                        this.removeToast(id);
+                    }, 3000);
+                },
+                removeToast(id) {
+                    const toast = this.toasts.find(t => t.id === id);
+                    if (toast) {
+                        toast.removing = true;
+                        setTimeout(() => {
+                            this.toasts = this.toasts.filter(t => t.id !== id);
+                        }, 300);
+                    }
+                },
+                getToastIcon(type) {
+                    const icons = { success: 'fas fa-check-circle mr-2', error: 'fas fa-times-circle mr-2', info: 'fas fa-info-circle mr-2', warning: 'fas fa-exclamation-triangle mr-2' };
+                    return icons[type] || icons.info;
+                },
+                // 暗色模式
+                toggleDarkMode() {
+                    this.darkMode = !this.darkMode;
+                    localStorage.setItem('darkMode', this.darkMode);
+                    if (this.darkMode) {
+                        document.documentElement.classList.add('dark');
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                    }
+                },
                 async checkUser() {
                     if (!this.currentUser) return;
                     const res = await fetch('/api/user?username=' + this.currentUser);
@@ -623,11 +731,12 @@
                 async auth() {
                     const endpoint = this.isRegister ? '/api/register' : '/api/login';
                     const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.authForm) });
-                    if (!res.ok) { alert((await res.json()).error); return; }
+                    if (!res.ok) { this.showToast((await res.json()).error, 'error'); return; }
                     const data = await res.json();
                     this.currentUser = data.username; this.currentUserId = data.user_id; this.isAdmin = data.is_admin;
                     localStorage.setItem('username', this.currentUser);
                     this.showLogin = false; this.authForm = { username: '', password: '' }; this.loadProducts();
+                    this.showToast(this.isRegister ? '注册成功！' : '登录成功！', 'success');
                 },
                 logout() { this.currentUser = null; localStorage.removeItem('username'); this.loadProducts(); },
                 handleImageUpload(e) {
@@ -644,15 +753,15 @@
                         const reader = new FileReader();
                         reader.onload = async (e) => {
                             await fetch('/api/user/avatar', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: this.currentUser, avatar: e.target.result }) });
-                            alert('头像已更新');
+                            this.showToast('头像已更新', 'success');
                         };
                         reader.readAsDataURL(file);
                     }
                 },
                 async addProduct() {
-                    if (!this.currentUser) { alert('请先登录'); return; }
+                    if (!this.currentUser) { this.showToast('请先登录', 'warning'); return; }
                     const res = await fetch('/api/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...this.productForm, username: this.currentUser }) });
-                    if (res.ok) { this.showAddProduct = false; this.productForm = { name: '', description: '', image_url: '', product_url: '', tags: '', category_id: 1, imagePreview: '' }; this.loadProducts(); this.loadTags(); }
+                    if (res.ok) { this.showAddProduct = false; this.productForm = { name: '', description: '', image_url: '', product_url: '', tags: '', category_id: 1, imagePreview: '' }; this.loadProducts(); this.loadTags(); this.showToast('产品添加成功！', 'success'); }
                 },
                 async viewProduct(product) { this.selectedProduct = { ...product }; await this.loadComments(product.id); window.history.pushState({}, '', '?product=' + product.id); },
                 async loadComments(productId) { this.comments = await (await fetch('/api/products/' + productId + '/comments?username=' + (this.currentUser || ''))).json(); },
@@ -688,7 +797,7 @@
                 },
                 copyLink() {
                     navigator.clipboard.writeText(window.location.origin + '?product=' + this.selectedProduct.id);
-                    alert('链接已复制');
+                    this.showToast('链接已复制到剪贴板', 'success');
                 },
                 formatDate(d) { return new Date(d).toLocaleDateString('zh-CN'); }
             }
