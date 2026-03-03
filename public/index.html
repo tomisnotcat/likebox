@@ -276,6 +276,16 @@
                 </div>
             </div>
 
+            <!-- Error State -->
+            <div v-else-if="loadError" class="empty-state">
+                <div class="text-6xl mb-4">😵</div>
+                <h3 class="text-xl font-semibold text-gray-600 mb-2">加载失败</h3>
+                <p class="text-gray-500 mb-4">网络似乎有点问题</p>
+                <button @click="loadProducts" class="bg-indigo-600 text-white px-6 py-2 rounded-lg">
+                    <i class="fas fa-redo mr-2"></i>重试
+                </button>
+            </div>
+
             <!-- Empty State -->
             <div v-else-if="products.length === 0 && !loading" class="empty-state">
                 <div class="text-6xl mb-4">📦</div>
@@ -638,7 +648,7 @@
                     authForm: { username: '', password: '' },
                     authSubmitting: false,
                     productForm: { name: '', description: '', image_url: '', product_url: '', tags: '', category_id: 1, imagePreview: '' },
-                    newComment: '', compareList: [], showBackToTop: false
+                    newComment: '', compareList: [], showBackToTop: false, loadError: false
                 }
             },
             mounted() {
@@ -709,19 +719,24 @@
                 async loadBrands() { this.brands = await (await fetch('/api/brands')).json(); },
                 async loadProducts() {
                     this.loading = true;
-                    const params = new URLSearchParams();
-                    if (this.categoryId) params.append('category_id', this.categoryId);
-                    if (this.brandId) params.append('brand_id', this.brandId);
-                    if (this.search) params.append('search', this.search);
-                    params.append('sort', this.sort);
-                    if (this.currentUser) params.append('username', this.currentUser);
-                    this.products = await (await fetch('/api/products?' + params)).json();
+                    this.loadError = false;
+                    try {
+                        const params = new URLSearchParams();
+                        if (this.categoryId) params.append('category_id', this.categoryId);
+                        if (this.brandId) params.append('brand_id', this.brandId);
+                        if (this.search) params.append('search', this.search);
+                        params.append('sort', this.sort);
+                        if (this.currentUser) params.append('username', this.currentUser);
+                        const res = await fetch('/api/products?' + params);
+                        this.products = await res.json();
+                    } catch (e) {
+                        this.loadError = true;
+                        this.showToast('加载失败，请检查网络', 'error');
+                    }
+                    this.loading = false;
                     this.$nextTick(() => {
-                        this.loading = false;
-                        this.$nextTick(() => {
-                            document.querySelectorAll('.product-card').forEach((card, i) => {
-                                setTimeout(() => card.classList.add('loaded'), i * 50);
-                            });
+                        document.querySelectorAll('.product-card').forEach((card, i) => {
+                            setTimeout(() => card.classList.add('loaded'), i * 50);
                         });
                     });
                 },
