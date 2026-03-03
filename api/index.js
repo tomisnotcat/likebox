@@ -408,8 +408,10 @@ app.post('/api/comments', async (req, res, next) => {
   try {
     const user = db.users.find(u => u.username === req.body.username);
     if (!user) return res.status(401).json({ error: '请先登录' });
-    const content = escapeHtml(req.body.content);
-    const comment = { id: db.comments.length + 1, user_id: user.id, product_id: parseInt(req.body.product_id), content: content, created_at: new Date().toISOString() };
+    const content = (req.body.content || '').trim();
+    if (!content) return res.status(400).json({ error: '评论内容不能为空' });
+    const escapedContent = escapeHtml(content);
+    const comment = { id: db.comments.length + 1, user_id: user.id, product_id: parseInt(req.body.product_id), content: escapedContent, created_at: new Date().toISOString() };
     db.comments.push(comment);
     await saveToRedis();
     res.json({ ...comment, username: user.username });
