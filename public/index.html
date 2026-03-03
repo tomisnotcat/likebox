@@ -272,7 +272,6 @@ input:focus-visible {
             </div>
         </div>
 
-        <button @click="darkMode = !darkMode; localStorage.setItem('darkMode', darkMode)" class="text-gray-600 hover:text-indigo-600 p-2 btn-mobile" :title="darkMode ? '切换亮色模式' : '切换暗色模式'"><i class="fas" :class="darkMode ? 'fa-sun' : 'fa-moon'"></i></button>
                     <button @click="showCompare = true" class="text-gray-600 hover:text-indigo-600 p-2 btn-mobile" title="对比"><i class="fas fa-balance-scale"></i></button>
                     <button @click="showWeekly = true; loadWeekly()" class="text-gray-600 hover:text-indigo-600 p-2 btn-mobile" title="一周精选"><i class="fas fa-star"></i></button>
                     <button @click="showCheckin = true; loadCheckin()" class="text-gray-600 hover:text-indigo-600 p-2 btn-mobile" title="签到"><i class="fas fa-calendar-check"></i></button>
