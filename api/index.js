@@ -1,6 +1,20 @@
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
+const rateLimit = require('express-rate-limit');
+
+// 速率限制器
+const generalLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1分钟
+  max: 60, // 最多60次请求
+  message: { error: '请求过于频繁，请稍后再试' }
+});
+
+const strictLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1分钟
+  max: 10, // 最多10次请求
+  message: { error: '请求过于频繁，请稍后再试' }
+});
 
 // HTML 转义防止 XSS
 function escapeHtml(text) {
@@ -52,6 +66,7 @@ async function loadFromRedis() {
 
 const app = express();
 app.use(cors());
+app.use(generalLimiter); // 通用速率限制
 app.use(express.json({ limit: '2mb' }));
 
 // 初始化 Redis 并加载数据
@@ -425,7 +440,7 @@ app.post('/api/comments', async (req, res, next) => {
   }
 });
 
-app.post('/api/register', async (req, res, next) => {
+app.post('/api/register', strictLimiter, async (req, res, next) => {
   try {
     const username = (req.body.username || '').trim();
     const password = req.body.password || '';
@@ -449,7 +464,7 @@ app.post('/api/register', async (req, res, next) => {
   }
 });
 
-app.post('/api/login', async (req, res, next) => {
+app.post('/api/login', strictLimiter, async (req, res, next) => {
   try {
     const user = db.users.find(u => u.username === req.body.username);
     if (!user) return res.status(401).json({ error: '用户名或密码错误' });
