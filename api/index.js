@@ -686,6 +686,9 @@ app.get('/api/compare', (req, res, next) => {
 
 app.get('/api/admin/stats', (req, res, next) => {
   try {
+    const username = req.query.username;
+    const user = db.users.find(u => u.username === username);
+    if (!user || !user.is_admin) return res.status(403).json({ error: '需要管理员权限' });
     res.json({ total_users: db.users.length, total_products: db.products.length, total_likes: db.likes.length, total_comments: db.comments.length });
   } catch (err) {
     next(err);
@@ -810,6 +813,10 @@ app.get('/api/follow/count/:username', (req, res, next) => {
 // 获取全局数据分析（管理员）
 app.get('/api/admin/analytics', (req, res, next) => {
   try {
+    const username = req.query.username;
+    const user = db.users.find(u => u.username === username);
+    if (!user || !user.is_admin) return res.status(403).json({ error: '需要管理员权限' });
+    
     // 预处理数据
     const userLikeCount = {};
     const userCommentCount = {};
