@@ -188,11 +188,6 @@ function setCache(key, data) {
   cache.set(key, { data, timestamp: Date.now() });
 }
 
-// Test route
-app.get('/api/test-route', (req, res) => {
-  res.json({ success: true, message: 'Route works!' });
-});
-
 app.get('/api/products', (req, res, next) => {
   try {
     const cacheKey = JSON.stringify(req.query);
